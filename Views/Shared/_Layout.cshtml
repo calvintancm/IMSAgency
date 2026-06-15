@@ -249,7 +249,7 @@
 
     @await Html.PartialAsync("_Navigation")
 
-    <form id="logoutForm" method="post" asp-controller="Account" asp-action="Logout" style="display:none;">
+    <form id="logoutForm" method="post" asp-controller="Auth" asp-action="Logout" style="display:none;">
         @Html.AntiForgeryToken()
     </form>
 

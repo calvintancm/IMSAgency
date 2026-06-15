@@ -116,7 +116,8 @@ namespace ImsAgency.Web.Controllers
 
             _logger.LogInformation("User {Username} logged out.", user?.UserName ?? "Unknown");
 
-            return RedirectToAction("Login");
+           // return RedirectToAction("Login");
+            return RedirectToAction("Login", "Auth");
         }
 
         // ================================================================
