@@ -1,0 +1,129 @@
+@* ═══════════════════════════════════════════
+   _Flash.cshtml — TempData Flash Messages
+   Supports: Success, Error, Warning, Info
+   Usage in controller:
+     TempData["Success"] = "Record saved.";
+     TempData["Error"]   = "Something went wrong.";
+     TempData["Warning"] = "Please review this.";
+     TempData["Info"]    = "Processing started.";
+═══════════════════════════════════════════ *@
+
+<style>
+    .flash-container {
+        padding: 16px 24px 0;
+    }
+
+    .flash-alert {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 13px 16px;
+        border-radius: var(--radius);
+        border: 1px solid transparent;
+        margin-bottom: 10px;
+        font-size: 0.855rem;
+        line-height: 1.5;
+        animation: flash-in 0.3s ease;
+        position: relative;
+    }
+
+    @@keyframes flash-in {
+        from { opacity: 0; transform: translateY(-8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .flash-alert.flash-success {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+        color: #15803d;
+    }
+
+    .flash-alert.flash-error {
+        background: #fff1f2;
+        border-color: #fecdd3;
+        color: #be123c;
+    }
+
+    .flash-alert.flash-warning {
+        background: #fffbeb;
+        border-color: #fde68a;
+        color: #92400e;
+    }
+
+    .flash-alert.flash-info {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+        color: #1d4ed8;
+    }
+
+    .flash-icon { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+
+    .flash-body { flex: 1; }
+    .flash-title { font-weight: 700; margin-bottom: 1px; }
+    .flash-text  { opacity: 0.9; }
+
+    .flash-close {
+        background: none; border: none; cursor: pointer;
+        font-size: 15px; opacity: 0.5; padding: 0 2px;
+        line-height: 1; transition: opacity 0.15s;
+        flex-shrink: 0; align-self: center;
+    }
+
+    .flash-close:hover { opacity: 1; }
+</style>
+
+@{
+    var flashTypes = new[]
+    {
+        new { Key = "Success", CssClass = "flash-success", Icon = "bi-check-circle-fill", Title = "Success" },
+        new { Key = "Error",   CssClass = "flash-error",   Icon = "bi-x-circle-fill",    Title = "Error"   },
+        new { Key = "Warning", CssClass = "flash-warning", Icon = "bi-exclamation-triangle-fill", Title = "Warning" },
+        new { Key = "Info",    CssClass = "flash-info",    Icon = "bi-info-circle-fill",  Title = "Info"    },
+    };
+
+    bool hasAny = flashTypes.Any(f => TempData[f.Key] != null);
+}
+
+@if (hasAny)
+{
+    <div class="flash-container">
+        @foreach (var flash in flashTypes)
+        {
+            if (TempData[flash.Key] != null)
+            {
+                <div class="flash-alert @flash.CssClass" id="flash_@flash.Key">
+                    <i class="bi @flash.Icon flash-icon"></i>
+                    <div class="flash-body">
+                        <div class="flash-title">@flash.Title</div>
+                        <div class="flash-text">@TempData[flash.Key]</div>
+                    </div>
+                    <button class="flash-close" onclick="dismissFlash('flash_@flash.Key')" title="Dismiss">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            }
+        }
+    </div>
+
+    <script>
+    function dismissFlash(id) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.style.transition = 'opacity 0.25s, transform 0.25s';
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(-6px)';
+            setTimeout(function() { el.remove(); }, 260);
+        }
+    }
+
+    // Auto-dismiss after 6 seconds
+    setTimeout(function() {
+        document.querySelectorAll('.flash-alert').forEach(function(el) {
+            el.style.transition = 'opacity 0.4s, transform 0.4s';
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(-6px)';
+            setTimeout(function() { el.remove(); }, 420);
+        });
+    }, 6000);
+    </script>
+}

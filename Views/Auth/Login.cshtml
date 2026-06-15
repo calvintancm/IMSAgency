@@ -1,0 +1,1128 @@
+@model ImsAgency.Web.ViewModels.Auth.LoginViewModel
+@{
+    ViewData["Title"] = "Sign In";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign In — IMS Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.10.1/sweetalert2.all.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.10.1/sweetalert2.min.css" />
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --deep: #0d1b2a;
+            --mid: #122035;
+            --card: #1a2f47;
+            --frost: #e8f0f8;
+            --ice: #c8d8ee;
+            --accent: #1d6fa4;
+            --accent-lt: #3d9bd4;
+            --accent-glow: rgba(29,111,164,0.30);
+            --gold: #c9a84c;
+            --gold-lt: #e3c87a;
+            --gold-dim: rgba(201,168,76,0.12);
+            --white: #ffffff;
+            --muted: #6080a0;
+            --muted-lt: #90aac8;
+            --border: rgba(255,255,255,0.07);
+            --border-act: rgba(29,111,164,0.45);
+            --input-bg: rgba(255,255,255,0.04);
+            --error: #e05560;
+            --radius: 16px;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: 'Outfit', sans-serif;
+            background: var(--deep);
+            color: var(--white);
+            overflow: hidden;
+        }
+
+        /* ══ LAYOUT ══════════════════════════════════════════════ */
+        .login-wrapper {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* ══ LEFT PANEL ══════════════════════════════════════════ */
+        .panel-left {
+            flex: 1.15;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 48px;
+            background: linear-gradient(155deg, #0e2238 0%, #0d1b2a 45%, #080f1a 100%);
+        }
+
+        /* Subtle legal scale pattern overlay */
+        .grid-overlay {
+            position: absolute;
+            inset: 0;
+            opacity: 0.04;
+            background-image: linear-gradient(rgba(29,111,164,1) 1px, transparent 1px), linear-gradient(90deg, rgba(29,111,164,1) 1px, transparent 1px);
+            background-size: 44px 44px;
+        }
+
+        /* Orbs */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(90px);
+            animation: float 10s ease-in-out infinite;
+        }
+
+        .orb-1 {
+            width: 480px;
+            height: 480px;
+            background: radial-gradient(circle, rgba(29,111,164,0.20), transparent 70%);
+            top: -110px;
+            left: -90px;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 340px;
+            height: 340px;
+            background: radial-gradient(circle, rgba(201,168,76,0.16), transparent 70%);
+            bottom: -50px;
+            right: -50px;
+            animation-delay: -4.5s;
+        }
+
+        .orb-3 {
+            width: 220px;
+            height: 220px;
+            background: radial-gradient(circle, rgba(29,111,164,0.12), transparent 70%);
+            bottom: 170px;
+            left: 70px;
+            animation-delay: -7s;
+        }
+
+        @@keyframes float {
+            0%, 100% {
+                transform: translateY(0) scale(1);
+            }
+
+            50% {
+                transform: translateY(-20px) scale(1.03);
+            }
+        }
+
+        /* Particles */
+        .particles {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(200,216,238,0.50);
+            animation: drift linear infinite;
+        }
+
+        @@keyframes drift {
+            0% {
+                transform: translateY(110vh) rotate(0deg);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 0.7;
+            }
+
+            90% {
+                opacity: 0.4;
+            }
+
+            100% {
+                transform: translateY(-10vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        /* Illustration wrap */
+        .illustration-wrap {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+            animation: slide-in-left 0.7s cubic-bezier(0.22,1,0.36,1) both;
+            animation-delay: 0.1s;
+        }
+
+        @@keyframes slide-in-left {
+            from {
+                opacity: 0;
+                transform: translateX(-28px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .illustration-svg {
+            width: 350px;
+            height: auto;
+            filter: drop-shadow(0 24px 60px rgba(29,111,164,0.28));
+            animation: hover-svg 6s ease-in-out infinite;
+        }
+
+        @@keyframes hover-svg {
+            0%, 100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-12px);
+            }
+        }
+
+        /* Brand block */
+        .brand-block {
+            text-align: center;
+        }
+
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 13px;
+            margin-bottom: 14px;
+        }
+
+        .brand-icon {
+            width: 46px;
+            height: 46px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-lt));
+            border-radius: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px var(--accent-glow);
+        }
+
+            .brand-icon svg {
+                width: 24px;
+                height: 24px;
+                fill: white;
+            }
+
+        .brand-name {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--white);
+            letter-spacing: -0.3px;
+        }
+
+        .brand-tagline {
+            font-size: 0.88rem;
+            color: var(--muted-lt);
+            font-weight: 300;
+            line-height: 1.65;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+
+        /* Feature pills */
+        .feature-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 18px;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(29,111,164,0.12);
+            border: 1px solid rgba(29,111,164,0.28);
+            border-radius: 20px;
+            padding: 5px 13px;
+            font-size: 0.73rem;
+            font-weight: 500;
+            color: #8bc8e8;
+            letter-spacing: 0.02em;
+        }
+
+        .pill-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent-lt);
+            flex-shrink: 0;
+        }
+
+        /* Stats row */
+        .stats-row {
+            display: flex;
+            gap: 28px;
+            margin-top: 22px;
+            padding-top: 18px;
+            border-top: 1px solid rgba(255,255,255,0.07);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-num {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: var(--gold);
+            display: block;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.67rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        /* ══ RIGHT PANEL ═════════════════════════════════════════ */
+        .panel-right {
+            flex: 0.85;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--mid);
+            position: relative;
+            padding: 48px 52px;
+            overflow: hidden;
+        }
+
+            .panel-right::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: linear-gradient(90deg, transparent 0%, var(--accent-lt) 35%, var(--gold) 70%, transparent 100%);
+            }
+
+            .panel-right::after {
+                content: '';
+                position: absolute;
+                bottom: -80px;
+                right: -80px;
+                width: 260px;
+                height: 260px;
+                border-radius: 50%;
+                background: radial-gradient(circle, rgba(29,111,164,0.06), transparent 70%);
+                pointer-events: none;
+            }
+
+        /* Status badge */
+        .status-badge {
+            position: absolute;
+            top: 22px;
+            right: 22px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: rgba(29,111,164,0.12);
+            border: 1px solid rgba(29,111,164,0.25);
+            border-radius: 20px;
+            padding: 5px 12px 5px 9px;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: #8bc8e8;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-lt);
+            box-shadow: 0 0 6px var(--accent-lt);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @@keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.4;
+                transform: scale(0.8);
+            }
+        }
+
+        /* Form card */
+        .form-card {
+            width: 100%;
+            max-width: 390px;
+            position: relative;
+            z-index: 1;
+            animation: slide-up 0.55s cubic-bezier(0.22,1,0.36,1) both;
+        }
+
+        @@keyframes slide-up {
+            from {
+                opacity: 0;
+                transform: translateY(26px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Form header */
+        .form-header {
+            margin-bottom: 36px;
+        }
+
+        .form-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 0.71rem;
+            font-weight: 600;
+            color: var(--accent-lt);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            margin-bottom: 12px;
+        }
+
+        .eyebrow-line {
+            width: 24px;
+            height: 1.5px;
+            background: var(--accent-lt);
+            border-radius: 2px;
+        }
+
+        .form-title {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--white);
+            line-height: 1.12;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+        }
+
+            .form-title span {
+                color: var(--gold-lt);
+            }
+
+        .form-subtitle {
+            font-size: 0.87rem;
+            color: var(--muted-lt);
+            font-weight: 300;
+            line-height: 1.5;
+        }
+
+        /* Error alert */
+        .alert-error {
+            background: rgba(224,85,96,0.08);
+            border: 1px solid rgba(224,85,96,0.25);
+            border-left: 3px solid var(--error);
+            border-radius: 10px;
+            padding: 13px 15px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            animation: shake 0.4s ease;
+        }
+
+        @@keyframes shake {
+            0%, 100% {
+                transform: translateX(0);
+            }
+
+            20% {
+                transform: translateX(-5px);
+            }
+
+            40% {
+                transform: translateX(5px);
+            }
+
+            60% {
+                transform: translateX(-3px);
+            }
+
+            80% {
+                transform: translateX(3px);
+            }
+        }
+
+        .alert-error-icon {
+            color: var(--error);
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .alert-error-text {
+            font-size: 0.84rem;
+            color: #f0a0a8;
+            line-height: 1.45;
+        }
+
+        /* Field groups */
+        .field-group {
+            margin-bottom: 20px;
+        }
+
+        .field-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--muted-lt);
+            text-transform: uppercase;
+            letter-spacing: 0.09em;
+            margin-bottom: 9px;
+        }
+
+        .field-wrap {
+            position: relative;
+        }
+
+        .field-input {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1.5px solid var(--border);
+            border-radius: 11px;
+            padding: 13px 16px 13px 46px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.93rem;
+            color: var(--white);
+            outline: none;
+            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+            -webkit-appearance: none;
+        }
+
+            .field-input::placeholder {
+                color: #1e3a58;
+            }
+
+            .field-input:focus {
+                border-color: var(--accent-lt);
+                background: rgba(29,111,164,0.08);
+                box-shadow: 0 0 0 4px rgba(29,111,164,0.12);
+            }
+
+        .field-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            pointer-events: none;
+            display: flex;
+            transition: color 0.2s;
+        }
+
+            .field-icon svg {
+                width: 17px;
+                height: 17px;
+            }
+
+        .field-wrap:focus-within .field-icon {
+            color: var(--accent-lt);
+        }
+
+        .field-toggle {
+            position: absolute;
+            right: 13px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            padding: 4px;
+            transition: color 0.2s;
+        }
+
+            .field-toggle:hover {
+                color: var(--accent-lt);
+            }
+
+            .field-toggle svg {
+                width: 17px;
+                height: 17px;
+            }
+
+        .field-input.has-toggle {
+            padding-right: 44px;
+        }
+
+        .validation-msg {
+            font-size: 0.76rem;
+            color: var(--error);
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Options row */
+        .options-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 26px;
+        }
+
+        .remember-label {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            cursor: pointer;
+            font-size: 0.84rem;
+            color: var(--muted-lt);
+            user-select: none;
+        }
+
+        .remember-check {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent-lt);
+            cursor: pointer;
+        }
+
+        .forgot-link {
+            font-size: 0.82rem;
+            color: var(--gold-lt);
+            text-decoration: none;
+            opacity: 0.85;
+            transition: opacity 0.15s;
+        }
+
+            .forgot-link:hover {
+                opacity: 1;
+                text-decoration: underline;
+            }
+
+        /* Submit button */
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-lt) 100%);
+            border: none;
+            border-radius: 11px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.93rem;
+            font-weight: 700;
+            color: #ffffff;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.01em;
+        }
+
+            .btn-login::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+                opacity: 0;
+                transition: opacity 0.2s;
+            }
+
+            .btn-login:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 36px rgba(29,111,164,0.45);
+            }
+
+                .btn-login:hover::before {
+                    opacity: 1;
+                }
+
+            .btn-login:active {
+                transform: translateY(0);
+            }
+
+            .btn-login:disabled {
+                opacity: 0.55;
+                cursor: not-allowed;
+                transform: none;
+            }
+
+            .btn-login .spinner {
+                display: none;
+                width: 18px;
+                height: 18px;
+                border: 2px solid rgba(255,255,255,0.25);
+                border-top-color: #ffffff;
+                border-radius: 50%;
+                animation: spin 0.7s linear infinite;
+                margin: 0 auto;
+            }
+
+        @@keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .btn-login.loading .btn-text {
+            display: none;
+        }
+
+        .btn-login.loading .spinner {
+            display: block;
+        }
+
+        /* Footer */
+        .form-footer {
+            margin-top: 28px;
+            padding-top: 18px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+            .form-footer strong {
+                color: var(--muted-lt);
+                font-weight: 500;
+            }
+
+        /* ══ RESPONSIVE ══════════════════════════════════════════ */
+        @@media (max-width: 920px) {
+            .panel-left {
+                display: none;
+            }
+
+            .panel-right {
+                flex: 1;
+                padding: 32px 24px;
+                background: var(--deep);
+            }
+        }
+
+        @@media (max-width: 480px) {
+            .panel-right {
+                padding: 24px 18px;
+            }
+
+            .form-title {
+                font-size: 1.65rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-wrapper">
+
+        <!-- ══ LEFT PANEL - INSURANCE AGENCY MANAGEMENT ════════════════════════════════════════════ -->
+        <div class="panel-left">
+            <div class="grid-overlay"></div>
+            <div class="orb orb-1"></div>
+            <div class="orb orb-2"></div>
+            <div class="orb orb-3"></div>
+            <div class="particles" id="particles"></div>
+
+            <div class="illustration-wrap">
+
+                <!-- Insurance Agency SVG illustration -->
+                <svg class="illustration-svg" viewBox="0 0 420 340" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <radialGradient id="glow-blue" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="#00A8E8" stop-opacity="0.30" />
+                            <stop offset="100%" stop-color="#00A8E8" stop-opacity="0" />
+                        </radialGradient>
+                        <radialGradient id="glow-gold" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="#FFB74D" stop-opacity="0.35" />
+                            <stop offset="100%" stop-color="#FFB74D" stop-opacity="0" />
+                        </radialGradient>
+                        <radialGradient id="glow-green" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="#4CAF50" stop-opacity="0.25" />
+                            <stop offset="100%" stop-color="#4CAF50" stop-opacity="0" />
+                        </radialGradient>
+                        <linearGradient id="desk-grad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#0B2B4F" />
+                            <stop offset="100%" stop-color="#071A2E" />
+                        </linearGradient>
+                        <linearGradient id="shield-grad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#00A8E8" />
+                            <stop offset="100%" stop-color="#0077B6" />
+                        </linearGradient>
+                        <filter id="blur-sm"><feGaussianBlur stdDeviation="2" /></filter>
+                    </defs>
+
+                    <!-- Ground shadow -->
+                    <ellipse cx="210" cy="322" rx="155" ry="10" fill="rgba(0,0,0,0.25)" />
+
+                    <!-- ── Insurance Agency Building backdrop ── -->
+                    <rect x="70" y="100" width="280" height="205" rx="4" fill="url(#desk-grad)" stroke="#1A3A5C" stroke-width="1.5" />
+
+                    <!-- Agency building columns -->
+                    <rect x="88" y="120" width="18" height="165" rx="3" fill="#0F2A45" stroke="#1A4A6E" stroke-width="1" />
+                    <rect x="130" y="120" width="18" height="165" rx="3" fill="#0F2A45" stroke="#1A4A6E" stroke-width="1" />
+                    <rect x="274" y="120" width="18" height="165" rx="3" fill="#0F2A45" stroke="#1A4A6E" stroke-width="1" />
+                    <rect x="314" y="120" width="18" height="165" rx="3" fill="#0F2A45" stroke="#1A4A6E" stroke-width="1" />
+
+                    <!-- Building pediment -->
+                    <polygon points="55,102 210,50 365,102" fill="#0B2B4F" stroke="#00A8E8" stroke-width="1.5" />
+                    <ellipse cx="210" cy="105" rx="170" ry="28" fill="url(#glow-blue)" filter="url(#blur-sm)" opacity="0.5" />
+
+                    <!-- Frieze text -->
+                    <rect x="88" y="108" width="244" height="14" rx="2" fill="#0A1C2F" stroke="#1A3A5C" stroke-width="1" />
+                    <text x="210" y="119" font-family="Outfit,sans-serif" font-size="6" fill="#00A8E8" text-anchor="middle" font-weight="600" letter-spacing="2">INSURANCE AGENCY MANAGEMENT</text>
+
+                    <!-- ── Agency Door ── -->
+                    <rect x="172" y="218" width="76" height="87" rx="3" fill="#071729" stroke="#1A3A5C" stroke-width="1.5" />
+                    <rect x="177" y="223" width="30" height="40" rx="2" fill="#0A1C2F" stroke="#1A4A6E" stroke-width="1" />
+                    <rect x="213" y="223" width="30" height="40" rx="2" fill="#0A1C2F" stroke="#1A4A6E" stroke-width="1" />
+                    <path d="M172 225 Q210 202 248 225" stroke="#00A8E8" stroke-width="1.2" fill="none" opacity="0.5" />
+                    <!-- Door handles -->
+                    <circle cx="207" cy="245" r="2" fill="#FFB74D" opacity="0.8" />
+                    <circle cx="213" cy="245" r="2" fill="#FFB74D" opacity="0.8" />
+
+                    <!-- ── Main Center: Insurance Shield ── -->
+                    <g transform="translate(150,50)">
+                        <!-- Shield glow -->
+                        <ellipse cx="60" cy="65" rx="55" ry="55" fill="url(#glow-blue)" opacity="0.7" filter="url(#blur-sm)" />
+
+                        <!-- Shield body -->
+                        <path d="M60 15 L95 30 L95 65 Q95 100 60 115 Q25 100 25 65 L25 30 L60 15 Z"
+                              fill="url(#shield-grad)" stroke="#FFB74D" stroke-width="1.8" opacity="0.95" />
+
+                        <!-- Shield inner highlight -->
+                        <path d="M60 22 L88 34 L88 65 Q88 94 60 107 Q32 94 32 65 L32 34 L60 22 Z"
+                              fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" />
+
+                        <!-- Shield cross / protection symbol -->
+                        <line x1="60" y1="40" x2="60" y2="85" stroke="#FFB74D" stroke-width="2" stroke-linecap="round" opacity="0.9" />
+                        <line x1="40" y1="62" x2="80" y2="62" stroke="#FFB74D" stroke-width="2" stroke-linecap="round" opacity="0.9" />
+
+                        <!-- Center heart (care/protection) -->
+                        <path d="M60 68 Q52 60 46 66 Q40 72 46 78 L60 90 L74 78 Q80 72 74 66 Q68 60 60 68Z"
+                              fill="#FFB74D" opacity="0.85" />
+
+                        <!-- Top circle emblem -->
+                        <circle cx="60" cy="27" r="6" fill="#0B2B4F" stroke="#FFB74D" stroke-width="1.2" />
+                        <text x="60" y="29.5" font-family="Outfit,sans-serif" font-size="5" fill="#FFB74D" text-anchor="middle" font-weight="700">IA</text>
+                    </g>
+
+                    <!-- ── Policy Document Stack (Left) ── -->
+                    <g transform="translate(58,230)">
+                        <rect x="0" y="28" width="54" height="10" rx="2" fill="#0F3A5A" stroke="#00A8E8" stroke-width="1" />
+                        <rect x="2" y="16" width="50" height="14" rx="2" fill="#0D2E48" stroke="#00A8E8" stroke-width="1" />
+                        <rect x="5" y="19" width="15" height="8" rx="1" fill="#4CAF50" opacity="0.5" />
+                        <text x="38" y="26" font-family="Outfit,sans-serif" font-size="5" fill="#00A8E8" text-anchor="middle">POLICY</text>
+                        <rect x="4" y="4" width="46" height="14" rx="2" fill="#0A2240" stroke="#00A8E8" stroke-width="1" />
+                        <rect x="6" y="6" width="12" height="7" rx="1" fill="#FFB74D" opacity="0.4" />
+                        <text x="35" y="13" font-family="Outfit,sans-serif" font-size="5" fill="#00A8E8" text-anchor="middle">PREMIUM</text>
+                        <rect x="6" y="0" width="42" height="6" rx="2" fill="#082030" stroke="#1A3A5C" stroke-width="1" />
+                    </g>
+
+                    <!-- ── Claims Folder Stack (Right) ── -->
+                    <g transform="translate(304,236)">
+                        <rect x="0" y="20" width="58" height="9" rx="2" fill="#0F2A45" stroke="#1A4A6E" stroke-width="1" />
+                        <rect x="0" y="10" width="58" height="12" rx="2" fill="#0D2E48" stroke="#1A4A6E" stroke-width="1" />
+                        <rect x="6" y="12" width="20" height="5" rx="1" fill="#4CAF50" opacity="0.5" />
+                        <rect x="0" y="0" width="58" height="12" rx="2" fill="#0A2240" stroke="#1A4A6E" stroke-width="1" />
+                        <rect x="6" y="2" width="14" height="5" rx="1" fill="#FFB74D" opacity="0.4" />
+                        <!-- File tab -->
+                        <rect x="0" y="-4" width="22" height="6" rx="2" fill="#0F2A45" stroke="#1A4A6E" stroke-width="1" />
+                        <text x="11" y="1" font-family="Outfit,sans-serif" font-size="4" fill="#00A8E8" text-anchor="middle">CLAIM-24</text>
+                    </g>
+
+                    <!-- ── Agent / Client Icons (Floating cards) ── -->
+                    <g opacity="0.85" transform="translate(26,96)">
+                        <rect x="0" y="0" width="42" height="48" rx="4" fill="#0A1C2F" stroke="#00A8E8" stroke-width="1.2" />
+                        <circle cx="21" cy="14" r="6" fill="none" stroke="#00A8E8" stroke-width="1" opacity="0.5" />
+                        <path d="M10 28 Q10 22 16 22 L26 22 Q32 22 32 28" stroke="#00A8E8" stroke-width="1" fill="none" opacity="0.4" />
+                        <line x1="6" y1="35" x2="36" y2="35" stroke="#00A8E8" stroke-width="1" opacity="0.3" />
+                        <line x1="6" y1="40" x2="28" y2="40" stroke="#00A8E8" stroke-width="1" opacity="0.25" />
+                        <rect x="6" y="44" width="16" height="3" rx="1" fill="#4CAF50" opacity="0.5" />
+                        <text x="21" y="7" font-family="Outfit,sans-serif" font-size="4.5" fill="#FFB74D" text-anchor="middle" opacity="0.8">👤</text>
+                    </g>
+
+                    <g opacity="0.75" transform="translate(352,78)">
+                        <rect x="0" y="0" width="46" height="52" rx="4" fill="#0A1C2F" stroke="#00A8E8" stroke-width="1.2" />
+                        <rect x="6" y="8" width="34" height="8" rx="2" fill="none" stroke="#00A8E8" stroke-width="0.8" opacity="0.4" />
+                        <rect x="6" y="20" width="34" height="6" rx="2" fill="none" stroke="#00A8E8" stroke-width="0.8" opacity="0.3" />
+                        <rect x="6" y="30" width="24" height="6" rx="2" fill="none" stroke="#00A8E8" stroke-width="0.8" opacity="0.3" />
+                        <rect x="6" y="40" width="18" height="6" rx="1" fill="#FFB74D" opacity="0.3" />
+                        <text x="23" y="7" font-family="Outfit,sans-serif" font-size="5" fill="#4CAF50" text-anchor="middle" opacity="0.7">✓</text>
+                    </g>
+
+                    <!-- ── Insurance Connection / Network Arc ── -->
+                    <path d="M68 120 Q140 60 198 78 Q268 96 354 95"
+                          stroke="#00A8E8" stroke-width="1.2" stroke-dasharray="5 4"
+                          fill="none" opacity="0.3" />
+
+                    <!-- ── Agency Badge / Trust Mark ── -->
+                    <g transform="translate(186,30)">
+                        <circle cx="16" cy="16" r="19" fill="url(#glow-gold)" opacity="0.8" />
+                        <circle cx="16" cy="16" r="12" fill="#0A1C2F" stroke="#FFB74D" stroke-width="1.5" />
+                        <text x="16" y="13" font-family="Outfit,sans-serif" font-size="5.5" fill="#FFB74D" text-anchor="middle" font-weight="700">AGENCY</text>
+                        <text x="16" y="21" font-family="Outfit,sans-serif" font-size="4.5" fill="#FFB74D" text-anchor="middle" opacity="0.9">PRO</text>
+                    </g>
+
+                    <!-- ── Premium / Money Icons ── -->
+                    <g transform="translate(115,72)" opacity="0.7">
+                        <circle cx="8" cy="8" r="8" fill="url(#glow-green)" />
+                        <text x="8" y="11" font-family="sans-serif" font-size="9" fill="#4CAF50" text-anchor="middle">💰</text>
+                    </g>
+
+                    <g transform="translate(300,68)" opacity="0.6">
+                        <circle cx="8" cy="8" r="8" fill="url(#glow-blue)" />
+                        <text x="8" y="11" font-family="sans-serif" font-size="9" fill="#00A8E8" text-anchor="middle">📋</text>
+                    </g>
+
+                    <!-- Subtle decorative elements -->
+                    <text x="96" y="78" font-family="sans-serif" font-size="11" fill="#00A8E8" opacity="0.25">🛡️</text>
+                    <text x="316" y="72" font-family="sans-serif" font-size="9" fill="#FFB74D" opacity="0.25">★</text>
+                    <text x="145" y="58" font-family="sans-serif" font-size="7" fill="#4CAF50" opacity="0.20">✓</text>
+                    <text x="270" y="85" font-family="sans-serif" font-size="6" fill="#00A8E8" opacity="0.20">⚡</text>
+                </svg>
+
+                <!-- Brand block - Insurance Agency -->
+                <div class="brand-block">
+                    <div class="brand-logo">
+                        <div class="brand-icon">
+                            <!-- Insurance Shield icon -->
+                            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2L3 6v6c0 5.5 9 10 9 10s9-4.5 9-10V6l-9-4z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M12 8v4m0 4h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <span class="brand-name">InsurePro Agency</span>
+                    </div>
+                    <p class="brand-tagline">
+                        Insurance Agency Management<br>Policies • Claims • Agents
+                    </p>
+
+                    <div class="feature-pills">
+                        <span class="pill"><span class="pill-dot"></span>Policy Admin</span>
+                        <span class="pill"><span class="pill-dot"></span>Claims Processing</span>
+                        <span class="pill"><span class="pill-dot"></span>Agent Portal</span>
+                    </div>
+
+                    <div class="stats-row">
+                        <div class="stat-item">
+                            <span class="stat-num">99%</span>
+                            <span class="stat-label">Settlement</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-num">24/7</span>
+                            <span class="stat-label">Support</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-num">MY</span>
+                            <span class="stat-label">Licensed</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- ══ RIGHT PANEL ════════════════════════════════════════════ -->
+        <div class="panel-right">
+
+            <div class="status-badge">
+                <div class="status-dot"></div>
+                System Online
+            </div>
+
+            <div class="form-card">
+
+                <div class="form-header">
+                    <div class="form-eyebrow">
+                        <span class="eyebrow-line"></span>
+                        Secure Portal
+                    </div>
+                    <h1 class="form-title">Welcome <span>Back</span></h1>
+                    <p class="form-subtitle">Sign in to access the MVA Legal Case Management system.</p>
+                </div>
+
+                @if (TempData["ErrorMessage"] != null)
+                {
+                    <div class="alert-error">
+                        <span class="alert-error-icon">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+                            </svg>
+                        </span>
+                        <span class="alert-error-text">@TempData["ErrorMessage"]</span>
+                    </div>
+                }
+
+                @using (Html.BeginForm("Login", "Auth", new { ReturnUrl = ViewBag.ReturnUrl },
+                                FormMethod.Post, null, new { id = "loginForm", autocomplete = "off" }))
+                {
+                    @Html.AntiForgeryToken()
+
+                    <!-- Username -->
+                    <div class="field-group">
+                        <label class="field-label" for="UserName">Username</label>
+                        <div class="field-wrap">
+                            @Html.TextBoxFor(m => m.Username, new {
+                            id = "UserName",
+                                                @class = "field-input",
+                                                placeholder = "Enter your username",
+                                                autocomplete = "username",
+                                                spellcheck = "false"
+                                                })
+                        <span class="field-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+                            </svg>
+                        </span>
+                    </div>
+                    @if (ViewData.ModelState["UserName"]?.Errors.Count > 0)
+                    {
+                        <div class="validation-msg">@Html.ValidationMessageFor(m => m.Username)</div>
+                    }
+                </div>
+
+                <!-- Password -->
+                <div class="field-group">
+                    <label class="field-label" for="Password">Password</label>
+                    <div class="field-wrap">
+                        @Html.PasswordFor(m => m.Password, new {
+                        id = "Password",
+                                                @class = "field-input has-toggle",
+                                                placeholder = "Enter your password",
+                                                autocomplete = "current-password"
+                                                })
+                        <span class="field-icon">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z" />
+                            </svg>
+                        </span>
+                        <button type="button" class="field-toggle" id="togglePwd" title="Show/hide password">
+                            <svg id="eyeIcon" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
+                            </svg>
+                        </button>
+                    </div>
+                    @if (ViewData.ModelState["Password"]?.Errors.Count > 0)
+                    {
+                        <div class="validation-msg">@Html.ValidationMessageFor(m => m.Password)</div>
+                    }
+                </div>
+
+                <!-- Options row -->
+                <div class="options-row">
+                    <label class="remember-label">
+                        @Html.CheckBoxFor(m => m.RememberMe, new { @class = "remember-check" })
+                        Remember me for 8 hours
+                    </label>
+                    <a href="javascript:void(0)" class="forgot-link" onclick="showForgotPassword()">
+                        Forgot password?
+                    </a>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" class="btn-login" id="loginBtn">
+                    <span class="btn-text">Sign In</span>
+                    <span class="spinner"></span>
+                </button>
+                                }
+
+                <div class="form-footer">
+                    <p>Having trouble? Contact your <strong>system administrator</strong>.</p>
+                    <p style="margin-top:5px;">&copy; @DateTime.Now.Year LegalCase MVA &mdash; v1.0</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ── Floating particles ───────────────────────────────── */
+        (function () {
+            var c = document.getElementById('particles');
+            for (var i = 0; i < 16; i++) {
+                var p = document.createElement('div');
+                p.className = 'particle';
+                var s = Math.random() * 4 + 2;
+                p.style.cssText = [
+                    'width:'    + s + 'px',
+                    'height:'   + s + 'px',
+                    'left:'     + (Math.random() * 100) + '%',
+                    'top:'      + (Math.random() * 100) + '%',
+                    'animation-duration:'  + (Math.random() * 14 + 10) + 's',
+                    'animation-delay:'     + (Math.random() * -14)     + 's',
+                    'opacity:'             + (Math.random() * 0.45 + 0.15)
+                ].join(';');
+                c.appendChild(p);
+            }
+        })();
+
+        /* ── Forgot password ─────────────────────────────────── */
+        function showForgotPassword() {
+            Swal.fire({
+                icon: 'info',
+                title: 'Forgot Your Password?',
+                html: 'Please contact the <strong>IT Administrator</strong> or your system administrator to reset your password.',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#1d6fa4',
+                background: '#122035',
+                color: '#e8f0f8'
+            });
+        }
+
+        /* ── Password show/hide ──────────────────────────────── */
+        var eyeOnPath  = 'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z';
+        var eyeOffPath = 'M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z';
+
+        document.getElementById('togglePwd').addEventListener('click', function () {
+            var pwd    = document.getElementById('Password');
+            var icon   = document.getElementById('eyeIcon');
+            var isHide = pwd.type === 'password';
+            pwd.type          = isHide ? 'text' : 'password';
+            icon.innerHTML    = '<path d="' + (isHide ? eyeOffPath : eyeOnPath) + '"/>';
+        });
+
+        /* ── Login loading state ─────────────────────────────── */
+        document.getElementById('loginForm').addEventListener('submit', function () {
+            var u = document.getElementById('UserName').value.trim();
+            var p = document.getElementById('Password').value.trim();
+            if (u && p) {
+                var btn = document.getElementById('loginBtn');
+                btn.classList.add('loading');
+                btn.disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>

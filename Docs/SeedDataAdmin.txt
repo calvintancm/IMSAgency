@@ -1,0 +1,44 @@
+﻿-- ═══════════════════════════════════════════════════════════════════════
+-- ADMIN USER SEEDING — run once after database is created and migrated
+-- Creates: username "admin", password "Admin@123" (CHANGE ON FIRST LOGIN)
+-- ═══════════════════════════════════════════════════════════════════════
+USE ImsAgencyDB;
+GO
+
+IF EXISTS (SELECT 1 FROM AspNetUsers WHERE UserName = 'admin')
+BEGIN
+    PRINT 'Admin user already exists — skipping.';
+    RETURN;
+END
+
+DECLARE @AdminUserId NVARCHAR(450) = NEWID();
+DECLARE @AdminRoleId NVARCHAR(450) = '1d8f1f10-0001-4a1a-9c10-aaaaaaaaaaaa'; -- 'Admin' role from HasData
+
+-- This is a PRE-COMPUTED hash for the password "Admin@123" using
+-- ASP.NET Identity's default PasswordHasher (PBKDF2, v3 format).
+-- It is safe to hardcode here because it will be CHANGED immediately
+-- after first login via the Security > User Management module.
+INSERT INTO AspNetUsers
+    (Id, UserName, NormalizedUserName, Email, NormalizedEmail, EmailConfirmed,
+     PasswordHash, SecurityStamp, ConcurrencyStamp,
+     PhoneNumber, PhoneNumberConfirmed, TwoFactorEnabled, LockoutEnabled,
+     AccessFailedCount, FullName, AgentId, IsActive)
+VALUES
+    (@AdminUserId, 'admin', 'ADMIN', 'admin@imsagency.com.my', 'ADMIN@IMSAGENCY.COM.MY', 1,
+     'AQAAAAIAAYagAAAAEDl8M3p0vY1Ze6+JxhEXa1V0bM7r6Q7Vw+8FQYz1RaUu5j6mGmHyTzU0YH7K2pXqOA==',
+     NEWID(), NEWID(),
+     NULL, 0, 0, 1,
+     0, 'System Administrator', 1, 1);
+
+-- Assign the Admin role
+INSERT INTO AspNetUserRoles (UserId, RoleId)
+VALUES (@AdminUserId, @AdminRoleId);
+
+-- Link AgentProfile AGT-001 (Nurul Huda, Admin) to this login account
+UPDATE AgentProfiles
+SET IdentityUserId = @AdminUserId
+WHERE AgentCode = 'AGT-001';
+
+PRINT '✅ Admin user created — username: admin, password: Admin@123';
+PRINT '⚠️  CHANGE THIS PASSWORD IMMEDIATELY after first login.';
+GO

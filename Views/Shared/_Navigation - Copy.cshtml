@@ -1,0 +1,1299 @@
+@* ═══════════════════════════════════════════════════════
+   _Navigation.cshtml — MVA Legal Case Management System
+   EXPANDED : normal accordion submenu
+   COLLAPSED: flyout popup submenu
+   TOOLTIP  : shown on all items when collapsed
+═══════════════════════════════════════════════════════ *@
+
+@* ── Nav permission flags ── *@
+@{
+    var currentUsername  = User.Identity?.Name ?? "";
+    bool isAdmin         = User.IsInRole("Admin");
+    bool isSolicitor     = User.IsInRole("Admin") || User.IsInRole("Solicitor");
+    bool isCaseworker    = User.IsInRole("Admin") || User.IsInRole("Solicitor") || User.IsInRole("Caseworker");
+    bool canViewFinance  = User.IsInRole("Admin") || User.IsInRole("Solicitor") || User.IsInRole("Finance");
+    bool canViewReports  = User.IsInRole("Admin") || User.IsInRole("Solicitor") || User.IsInRole("Finance");
+    bool canAccessControl = isAdmin ||
+                            string.Equals(currentUsername, "admin", StringComparison.OrdinalIgnoreCase);
+}
+
+<style>
+    /* ══ SIDEBAR BASE ════════════════════════════════════════ */
+    #sidebar {
+        position: fixed;
+        top: 0; left: 0; bottom: 0;
+        width: var(--sidebar-w);
+        background: var(--sb-bg);
+        display: flex;
+        flex-direction: column;
+        z-index: 1040;
+        transition: width var(--transition);
+        overflow: visible;
+    }
+
+    body.sidebar-collapsed #sidebar {
+        width: var(--sidebar-w-collapsed);
+    }
+
+    /* ── Brand ─────────────────────────────────────────────── */
+    .sb-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 17px;
+        height: var(--topbar-h);
+        background: var(--sb-bg-top);
+        border-bottom: 1px solid var(--sb-border);
+        flex-shrink: 0;
+        text-decoration: none;
+        overflow: hidden;
+    }
+
+    .sb-brand-icon {
+        width: 36px; height: 36px;
+        background: linear-gradient(135deg, #1d6fa4, #3d9bd4);
+        border-radius: 9px;
+        flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 4px 12px rgba(29,111,164,0.45);
+    }
+
+        .sb-brand-icon i { color: #fff; font-size: 17px; }
+
+    .sb-brand-text {
+        overflow: hidden;
+        transition: opacity var(--transition), max-width var(--transition);
+        white-space: nowrap;
+        max-width: 200px;
+    }
+
+    .sb-brand-name {
+        font-family: 'Sora', sans-serif;
+        font-size: 0.95rem; font-weight: 700;
+        color: #fff; line-height: 1.2;
+    }
+
+    .sb-brand-sub {
+        font-size: 0.67rem;
+        color: var(--sb-text);
+        letter-spacing: 0.04em;
+    }
+
+    body.sidebar-collapsed .sb-brand-text {
+        opacity: 0; max-width: 0;
+    }
+
+    /* ── Nav scroll ─────────────────────────────────────────── */
+    .sb-nav {
+        flex: 1;
+        overflow-y: auto; overflow-x: visible;
+        padding: 8px 0;
+        scrollbar-width: thin;
+        scrollbar-color: var(--sb-hover) transparent;
+    }
+
+        .sb-nav::-webkit-scrollbar { width: 3px; }
+        .sb-nav::-webkit-scrollbar-track { background: transparent; }
+        .sb-nav::-webkit-scrollbar-thumb { background: var(--sb-hover); border-radius: 3px; }
+
+        .sb-nav ul { list-style: none; padding: 0; margin: 0; }
+
+    /* ── Section titles ─────────────────────────────────────── */
+    .sb-section-title {
+        padding: 13px 20px 4px;
+        font-size: 0.68rem; font-weight: 700;
+        color: var(--sb-text-header);
+        text-transform: uppercase; letter-spacing: 0.12em;
+        white-space: nowrap;
+        transition: opacity var(--transition), max-height var(--transition), padding var(--transition);
+        max-height: 40px; overflow: hidden;
+    }
+
+    body.sidebar-collapsed .sb-section-title {
+        opacity: 0; max-height: 0;
+        padding-top: 0; padding-bottom: 0;
+    }
+
+    /* ── Nav links ──────────────────────────────────────────── */
+    .sb-nav-link {
+        display: flex; align-items: center; gap: 11px;
+        padding: 10px 17px;
+        color: var(--sb-text);
+        text-decoration: none;
+        cursor: pointer; white-space: nowrap;
+        position: relative;
+        transition: color var(--transition), background var(--transition);
+        border: none; background: none;
+        width: 100%; text-align: left;
+        font-family: 'DM Sans', sans-serif;
+    }
+
+        .sb-nav-link:hover { background: var(--sb-hover); color: #fff; text-decoration: none; }
+
+        .sb-nav-link.active {
+            background: var(--sb-active-bg); color: #fff;
+            outline: none; box-shadow: none;
+        }
+
+            .sb-nav-link.active::before {
+                content: '';
+                position: absolute;
+                left: 0; top: 5px; bottom: 5px;
+                width: 3px;
+                background: var(--sb-active-line);
+                border-radius: 0 3px 3px 0;
+            }
+
+    body.sidebar-collapsed .sb-nav-link.active::before { display: none; }
+
+    .sb-nav-link:focus, .sb-nav-link:focus-visible { outline: none; box-shadow: none; }
+    button.sb-nav-link { outline: none; box-shadow: none; -webkit-appearance: none; }
+    button.sb-nav-link:focus, button.sb-nav-link:focus-visible { outline: none !important; box-shadow: none !important; }
+
+    /* Icons */
+    .sb-nav-icon {
+        width: 22px; min-width: 22px; flex-shrink: 0;
+        font-size: 15px; text-align: center;
+        display: flex; align-items: center; justify-content: center;
+        opacity: 1; visibility: visible;
+    }
+
+    /* Labels */
+    .sb-nav-label {
+        font-size: 0.9rem; font-weight: 500; flex: 1;
+        color: inherit; white-space: nowrap;
+        overflow: hidden; text-overflow: ellipsis;
+        transition: opacity var(--transition), max-width var(--transition);
+        max-width: 200px;
+    }
+
+    /* Badges */
+    .sb-badge {
+        font-size: 0.6rem; font-weight: 700;
+        padding: 2px 7px; border-radius: 20px;
+        color: #fff; line-height: 1.5; flex-shrink: 0;
+        transition: opacity var(--transition), max-width var(--transition);
+        overflow: hidden; max-width: 60px;
+    }
+        .sb-badge.badge-blue   { background: var(--accent-lt); }
+        .sb-badge.badge-orange { background: var(--gold); }
+        .sb-badge.badge-red    { background: var(--clr-danger); }
+
+    /* Chevron */
+    .sb-chevron {
+        font-size: 10px; color: var(--sb-text-header);
+        flex-shrink: 0; overflow: hidden; max-width: 20px;
+        transition: transform 0.22s, opacity var(--transition), max-width var(--transition);
+    }
+
+    .sb-nav-link[aria-expanded="true"] .sb-chevron { transform: rotate(90deg); }
+
+    /* ── Collapsed — icons only ─────────────────────────────── */
+    body.sidebar-collapsed .sb-nav-label,
+    body.sidebar-collapsed .sb-badge,
+    body.sidebar-collapsed .sb-chevron { opacity: 0; max-width: 0; pointer-events: none; }
+
+    body.sidebar-collapsed .sb-nav > ul > li > .sb-nav-link,
+    body.sidebar-collapsed .sb-footer-nav .sb-nav-link {
+        justify-content: center; padding: 10px 0; gap: 0;
+    }
+
+        body.sidebar-collapsed .sb-nav > ul > li > .sb-nav-link .sb-nav-icon,
+        body.sidebar-collapsed .sb-footer-nav .sb-nav-link .sb-nav-icon {
+            font-size: 18px; width: 22px; min-width: 22px;
+        }
+
+    /* ── Accordion submenu (expanded) ──────────────────────── */
+    .sb-submenu {
+        list-style: none; margin: 0; padding: 3px 0;
+        background: var(--sb-bg-deep);
+        border-left: 2px solid rgba(255,255,255,0.08);
+        margin-left: 28px; overflow: hidden;
+    }
+
+        .sb-submenu .sb-nav-link { padding: 8px 14px 8px 10px; font-size: 0.845rem; opacity: 0.9; gap: 9px; }
+            .sb-submenu .sb-nav-link:hover  { opacity: 1; color: #fff; }
+            .sb-submenu .sb-nav-link.active { opacity: 1; background: rgba(255,255,255,0.09); }
+                .sb-submenu .sb-nav-link.active::before { display: none; }
+
+        .sb-submenu .sb-nav-icon {
+            width: 18px !important; min-width: 18px !important;
+            font-size: 13px !important;
+            opacity: 1 !important; visibility: visible !important;
+            flex-shrink: 0 !important; color: var(--sb-text);
+            display: flex !important; align-items: center !important; justify-content: center !important;
+        }
+
+        .sb-submenu .sb-nav-link:hover .sb-nav-icon,
+        .sb-submenu .sb-nav-link.active .sb-nav-icon { color: var(--sb-active-line); }
+
+        .sb-submenu .sb-nav-label { font-size: 0.835rem; font-weight: 400; opacity: 1 !important; max-width: 200px !important; }
+        .sb-submenu .sb-nav-link.active .sb-nav-label { font-weight: 600; }
+
+    /* ── Flyout submenu (collapsed) ─────────────────────────── */
+    body.sidebar-collapsed .sb-nav > ul > li.has-submenu { position: relative; }
+    body.sidebar-collapsed .sb-submenu { display: none !important; }
+
+    .sb-flyout {
+        display: none;
+        position: fixed;
+        left: var(--sidebar-w-collapsed);
+        background: #1e2d42;
+        border-radius: 0 10px 10px 0;
+        box-shadow: 6px 4px 24px rgba(0,0,0,0.45);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-left: none;
+        min-width: 210px; padding: 6px 0;
+        z-index: 9998; pointer-events: auto;
+        margin-left: 8px;
+    }
+
+        .sb-flyout::before {
+            content: '';
+            position: absolute;
+            right: 100%; top: 14px;
+            border: 7px solid transparent;
+            border-right-color: #1e2d42;
+            pointer-events: none;
+        }
+
+    .sb-flyout-header {
+        padding: 8px 16px 6px;
+        font-family: 'Sora', sans-serif;
+        font-size: 0.78rem; font-weight: 700;
+        color: #90c4e8;
+        text-transform: uppercase; letter-spacing: 0.1em;
+        border-bottom: 1px solid rgba(255,255,255,0.07);
+        margin-bottom: 4px;
+    }
+
+    .sb-flyout-item {
+        display: flex; align-items: center; gap: 10px;
+        padding: 9px 16px;
+        color: #c8ddf0; text-decoration: none;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.855rem; font-weight: 500;
+        transition: background 0.15s, color 0.15s;
+        white-space: nowrap; cursor: pointer;
+        border: none; background: none;
+        width: 100%; text-align: left;
+    }
+
+        .sb-flyout-item:hover  { background: rgba(255,255,255,0.10); color: #ffffff; }
+        .sb-flyout-item.active { color: var(--sb-active-line); background: rgba(126,200,240,0.12); }
+        .sb-flyout-item i { font-size: 14px; width: 18px; text-align: center; color: #7aadd4; flex-shrink: 0; }
+        .sb-flyout-item:hover i, .sb-flyout-item.active i { color: var(--sb-active-line); }
+
+    body.sidebar-collapsed .sb-nav > ul > li.has-submenu:hover .sb-flyout,
+    .sb-flyout:hover { display: block; }
+
+    /* ── Simple tooltip (non-submenu collapsed items) ───────── */
+    body.sidebar-collapsed .sb-nav > ul > li:not(.has-submenu) [data-ptc-tooltip],
+    body.sidebar-collapsed .sb-footer-nav [data-ptc-tooltip] { position: relative; }
+
+        body.sidebar-collapsed .sb-nav > ul > li:not(.has-submenu) [data-ptc-tooltip]:hover::after,
+        body.sidebar-collapsed .sb-footer-nav [data-ptc-tooltip]:hover::after {
+            content: attr(data-ptc-tooltip);
+            position: fixed;
+            left: calc(var(--sidebar-w-collapsed) + 12px);
+            background: #1a2535; color: #f0f6ff;
+            padding: 6px 14px; border-radius: 8px;
+            font-size: 0.78rem; white-space: nowrap;
+            z-index: 9999; pointer-events: none;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            font-family: 'DM Sans', sans-serif; font-weight: 500;
+            border: 1px solid rgba(255,255,255,0.1);
+            transform: translateY(-50%); top: auto; margin-top: -10px;
+        }
+
+        body.sidebar-collapsed .sb-nav > ul > li:not(.has-submenu) [data-ptc-tooltip]:hover::before,
+        body.sidebar-collapsed .sb-footer-nav [data-ptc-tooltip]:hover::before {
+            content: '';
+            position: fixed;
+            left: calc(var(--sidebar-w-collapsed) + 5px);
+            border: 6px solid transparent;
+            border-right-color: #1a2535;
+            z-index: 9999; pointer-events: none; margin-top: -6px;
+        }
+
+    /* ── Sidebar footer ─────────────────────────────────────── */
+    .sb-footer-nav {
+        padding: 8px 0 6px;
+        border-top: 1px solid var(--sb-border);
+        flex-shrink: 0;
+    }
+
+    /* ── Mobile ─────────────────────────────────────────────── */
+    @@media (max-width: 768px) {
+        #sidebar {
+            width: var(--sidebar-w) !important;
+            transform: translateX(-100%);
+            transition: transform var(--transition);
+            z-index: 1050;
+            box-shadow: 4px 0 24px rgba(0,0,0,0.4);
+            overflow: hidden;
+        }
+
+        body.mobile-open #sidebar { transform: translateX(0); }
+
+        body.mobile-open .sb-brand-text,
+        body.mobile-open .sb-nav-label,
+        body.mobile-open .sb-badge,
+        body.mobile-open .sb-chevron,
+        body.mobile-open .sb-section-title {
+            opacity: 1 !important; max-width: 200px !important; overflow: visible !important;
+        }
+
+        body.mobile-open .sb-nav > ul > li > .sb-nav-link,
+        body.mobile-open .sb-footer-nav .sb-nav-link {
+            justify-content: flex-start !important; padding: 10px 17px !important; gap: 11px !important;
+        }
+
+            body.mobile-open .sb-nav > ul > li > .sb-nav-link .sb-nav-icon,
+            body.mobile-open .sb-footer-nav .sb-nav-link .sb-nav-icon {
+                font-size: 15px !important; width: 22px !important; min-width: 22px !important;
+            }
+
+        body.mobile-open .sb-submenu  { display: block !important; }
+        body.mobile-open .sb-flyout   { display: none  !important; }
+    }
+</style>
+
+<nav id="sidebar">
+
+    @* ── Brand ── *@
+    <a class="sb-brand" href="@Url.Action("Index", "Dashboard")">
+        <div class="sb-brand-icon"><i class="bi bi-scale"></i></div>
+        <div class="sb-brand-text">
+            <div class="sb-brand-name">LegalCase MVA</div>
+            <div class="sb-brand-sub">Motor Vehicle Accident System</div>
+        </div>
+    </a>
+
+    <div class="sb-nav">
+        <ul>
+
+            @* ════ MAIN ════ *@
+            <li class="sb-section-title">Main</li>
+
+            <li>
+                <a class="sb-nav-link" asp-controller="Dashboard" asp-action="Index"
+                   data-ptc-tooltip="Dashboard">
+                    <span class="sb-nav-icon"><i class="bi bi-speedometer2"></i></span>
+                    <span class="sb-nav-label">Dashboard</span>
+                </a>
+            </li>
+
+            @* ════ CASE MANAGEMENT ════ *@
+            <li class="sb-section-title">Case Management</li>
+
+            @* ── Case Files ── *@
+            <li class="has-submenu">
+                <button class="sb-nav-link" data-bs-toggle="collapse"
+                        data-bs-target="#menuCaseFiles" aria-expanded="false"
+                        data-ptc-tooltip="Case Files">
+                    <span class="sb-nav-icon"><i class="bi bi-folder2-open"></i></span>
+                    <span class="sb-nav-label">Case Files</span>
+                    <i class="bi bi-chevron-right sb-chevron"></i>
+                </button>
+
+                <ul class="collapse sb-submenu" id="menuCaseFiles">
+                    <li>
+                        @if (isCaseworker)
+                        {
+                            <a class="sb-nav-link" asp-controller="Case" asp-action="AllCases"
+                               data-ptc-tooltip="All Cases">
+                                <span class="sb-nav-icon"><i class="bi bi-list-ul"></i></span>
+                                <span class="sb-nav-label">All Cases</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-list-ul text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">All Cases</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (isCaseworker)
+                        {
+                            <a class="sb-nav-link" asp-controller="Case" asp-action="OpenNewCase"
+                               data-ptc-tooltip="Open New Case">
+                                <span class="sb-nav-icon"><i class="bi bi-folder-plus"></i></span>
+                                <span class="sb-nav-label">Open New Case</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-folder-plus text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Open New Case</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (isCaseworker)
+                        {
+                            <a class="sb-nav-link" asp-controller="Case" asp-action="MyCases"
+                               data-ptc-tooltip="My Cases">
+                                <span class="sb-nav-icon"><i class="bi bi-person-lines-fill"></i></span>
+                                <span class="sb-nav-label">My Cases</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-person-lines-fill text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">My Cases</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (isCaseworker)
+                        {
+                            <a class="sb-nav-link" asp-controller="Case" asp-action="ClosedCases"
+                               data-ptc-tooltip="Closed Cases">
+                                <span class="sb-nav-icon"><i class="bi bi-archive"></i></span>
+                                <span class="sb-nav-label">Closed Cases</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-archive text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Closed Cases</span>
+                            </a>
+                        }
+                    </li>
+                </ul>
+
+                <div class="sb-flyout">
+                    <div class="sb-flyout-header">Case Files</div>
+                    @if (isCaseworker)
+                    {
+                        <a class="sb-flyout-item" asp-controller="Case" asp-action="AllCases">
+                            <i class="bi bi-list-ul"></i> All Cases
+                        </a>
+                        <a class="sb-flyout-item" asp-controller="Case" asp-action="OpenNewCase">
+                            <i class="bi bi-folder-plus"></i> Open New Case
+                        </a>
+                        <a class="sb-flyout-item" asp-controller="Case" asp-action="MyCases">
+                            <i class="bi bi-person-lines-fill"></i> My Cases
+                        </a>
+                        <a class="sb-flyout-item" asp-controller="Case" asp-action="ClosedCases">
+                            <i class="bi bi-archive"></i> Closed Cases
+                        </a>
+                    }
+                    else
+                    {
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-list-ul text-muted"></i> All Cases
+                        </a>
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-folder-plus text-muted"></i> Open New Case
+                        </a>
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-person-lines-fill text-muted"></i> My Cases
+                        </a>
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-archive text-muted"></i> Closed Cases
+                        </a>
+                    }
+                </div>
+            </li>
+
+
+            @* ── Court & Hearings ── *@
+            <li class="has-submenu">
+                <button class="sb-nav-link" data-bs-toggle="collapse"
+                        data-bs-target="#menuHearings" aria-expanded="false"
+                        data-ptc-tooltip="Court & Hearings">
+                    <span class="sb-nav-icon"><i class="bi bi-bank2"></i></span>
+                    <span class="sb-nav-label">Court &amp; Hearings</span>
+                    <i class="bi bi-chevron-right sb-chevron"></i>
+                </button>
+
+                <ul class="collapse sb-submenu" id="menuHearings">
+                    <li>
+                        @if (isCaseworker)
+                        {
+                            <a class="sb-nav-link" asp-controller="Hearing" asp-action="Index"
+                               data-ptc-tooltip="All Hearings">
+                                <span class="sb-nav-icon"><i class="bi bi-calendar3"></i></span>
+                                <span class="sb-nav-label">All Hearings</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-calendar3 text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">All Hearings</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (isCaseworker)
+                        {
+                            <a class="sb-nav-link" asp-controller="Hearing" asp-action="Upcoming"
+                               data-ptc-tooltip="Upcoming Hearings">
+                                <span class="sb-nav-icon"><i class="bi bi-calendar-event"></i></span>
+                                <span class="sb-nav-label">Upcoming Hearings</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-calendar-event text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Upcoming Hearings</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (isCaseworker)
+                        {
+                            <a class="sb-nav-link" asp-controller="Hearing" asp-action="Schedule"
+                               data-ptc-tooltip="Schedule Hearing">
+                                <span class="sb-nav-icon"><i class="bi bi-calendar-plus"></i></span>
+                                <span class="sb-nav-label">Schedule Hearing</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-calendar-plus text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Schedule Hearing</span>
+                            </a>
+                        }
+                    </li>
+                </ul>
+
+                <div class="sb-flyout">
+                    <div class="sb-flyout-header">Court &amp; Hearings</div>
+                    @if (isCaseworker)
+                    {
+                        <a class="sb-flyout-item" asp-controller="Hearing" asp-action="Index">
+                            <i class="bi bi-calendar3"></i> All Hearings
+                        </a>
+                        <a class="sb-flyout-item" asp-controller="Hearing" asp-action="Upcoming">
+                            <i class="bi bi-calendar-event"></i> Upcoming Hearings
+                        </a>
+                        <a class="sb-flyout-item" asp-controller="Hearing" asp-action="Schedule">
+                            <i class="bi bi-calendar-plus"></i> Schedule Hearing
+                        </a>
+                    }
+                    else
+                    {
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-calendar3 text-muted"></i> All Hearings
+                        </a>
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-calendar-event text-muted"></i> Upcoming Hearings
+                        </a>
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-calendar-plus text-muted"></i> Schedule Hearing
+                        </a>
+                    }
+                </div>
+            </li>
+
+            @* ── Claims & Settlement ── *@
+            <li class="has-submenu">
+                <button class="sb-nav-link" data-bs-toggle="collapse"
+                        data-bs-target="#menuClaims" aria-expanded="false"
+                        data-ptc-tooltip="Claims & Settlement">
+                    <span class="sb-nav-icon"><i class="bi bi-cash-stack"></i></span>
+                    <span class="sb-nav-label">Claims &amp; Settlement</span>
+                    <i class="bi bi-chevron-right sb-chevron"></i>
+                </button>
+
+                <ul class="collapse sb-submenu" id="menuClaims">
+                    <li>
+                        @if (isSolicitor)
+                        {
+                            <a class="sb-nav-link" asp-controller="Settlement" asp-action="Index"
+                               data-ptc-tooltip="Settlement Offers">
+                                <span class="sb-nav-icon"><i class="bi bi-handshake"></i></span>
+                                <span class="sb-nav-label">Settlement Offers</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-handshake text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Settlement Offers</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (canViewFinance)
+                        {
+                            <a class="sb-nav-link" asp-controller="Disbursement" asp-action="Index"
+                               data-ptc-tooltip="Disbursements">
+                                <span class="sb-nav-icon"><i class="bi bi-credit-card"></i></span>
+                                <span class="sb-nav-label">Disbursements</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-credit-card text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Disbursements</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (canViewFinance)
+                        {
+                            <a class="sb-nav-link" asp-controller="Disbursement" asp-action="Create"
+                               data-ptc-tooltip="New Disbursement">
+                                <span class="sb-nav-icon"><i class="bi bi-plus-circle"></i></span>
+                                <span class="sb-nav-label">New Disbursement</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-plus-circle text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">New Disbursement</span>
+                            </a>
+                        }
+                    </li>
+                </ul>
+
+                <div class="sb-flyout">
+                    <div class="sb-flyout-header">Claims &amp; Settlement</div>
+                    @if (isSolicitor)
+                    {
+                        <a class="sb-flyout-item" asp-controller="Settlement" asp-action="Index">
+                            <i class="bi bi-handshake"></i> Settlement Offers
+                        </a>
+                    }
+                    else
+                    {
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-handshake text-muted"></i> Settlement Offers
+                        </a>
+                    }
+                    @if (canViewFinance)
+                    {
+                        <a class="sb-flyout-item" asp-controller="Disbursement" asp-action="Index">
+                            <i class="bi bi-credit-card"></i> Disbursements
+                        </a>
+                        <a class="sb-flyout-item" asp-controller="Disbursement" asp-action="Create">
+                            <i class="bi bi-plus-circle"></i> New Disbursement
+                        </a>
+                    }
+                    else
+                    {
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-credit-card text-muted"></i> Disbursements
+                        </a>
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-plus-circle text-muted"></i> New Disbursement
+                        </a>
+                    }
+                </div>
+            </li>
+
+            @* ── Medical & Injuries ── *@
+            <li class="has-submenu">
+                <button class="sb-nav-link" data-bs-toggle="collapse"
+                        data-bs-target="#menuMedical" aria-expanded="false"
+                        data-ptc-tooltip="Medical & Injuries">
+                    <span class="sb-nav-icon"><i class="bi bi-heart-pulse"></i></span>
+                    <span class="sb-nav-label">Medical &amp; Injuries</span>
+                    <i class="bi bi-chevron-right sb-chevron"></i>
+                </button>
+
+                <ul class="collapse sb-submenu" id="menuMedical">
+                    <li>
+                        @if (isCaseworker)
+                        {
+                            <a class="sb-nav-link" asp-controller="Injury" asp-action="Index"
+                               data-ptc-tooltip="Injury Records">
+                                <span class="sb-nav-icon"><i class="bi bi-file-medical"></i></span>
+                                <span class="sb-nav-label">Injury Records</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-file-medical text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Injury Records</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (isCaseworker)
+                        {
+                            <a class="sb-nav-link" asp-controller="Injury" asp-action="PendingReports"
+                               data-ptc-tooltip="Pending Medical Reports">
+                                <span class="sb-nav-icon"><i class="bi bi-hourglass-split"></i></span>
+                                <span class="sb-nav-label">Pending Reports</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-hourglass-split text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Pending Reports</span>
+                            </a>
+                        }
+                    </li>
+                </ul>
+
+                <div class="sb-flyout">
+                    <div class="sb-flyout-header">Medical &amp; Injuries</div>
+                    @if (isCaseworker)
+                    {
+                        <a class="sb-flyout-item" asp-controller="Injury" asp-action="Index">
+                            <i class="bi bi-file-medical"></i> Injury Records
+                        </a>
+                        <a class="sb-flyout-item" asp-controller="Injury" asp-action="PendingReports">
+                            <i class="bi bi-hourglass-split"></i> Pending Reports
+                        </a>
+                    }
+                    else
+                    {
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-file-medical text-muted"></i> Injury Records
+                        </a>
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-hourglass-split text-muted"></i> Pending Reports
+                        </a>
+                    }
+                </div>
+            </li>
+
+            @* ── Documents ── *@
+            <li class="has-submenu">
+                <button class="sb-nav-link" data-bs-toggle="collapse"
+                        data-bs-target="#menuDocuments" aria-expanded="false"
+                        data-ptc-tooltip="Documents">
+                    <span class="sb-nav-icon"><i class="bi bi-files"></i></span>
+                    <span class="sb-nav-label">Documents</span>
+                    <i class="bi bi-chevron-right sb-chevron"></i>
+                </button>
+
+                <ul class="collapse sb-submenu" id="menuDocuments">
+                    <li>
+                        @if (isCaseworker)
+                        {
+                            <a class="sb-nav-link" asp-controller="Document" asp-action="Index"
+                               data-ptc-tooltip="All Documents">
+                                <span class="sb-nav-icon"><i class="bi bi-folder"></i></span>
+                                <span class="sb-nav-label">All Documents</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-folder text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">All Documents</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (isCaseworker)
+                        {
+                            <a class="sb-nav-link" asp-controller="Document" asp-action="Outstanding"
+                               data-ptc-tooltip="Outstanding Documents">
+                                <span class="sb-nav-icon"><i class="bi bi-exclamation-circle"></i></span>
+                                <span class="sb-nav-label">Outstanding</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-exclamation-circle text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Outstanding</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (isCaseworker)
+                        {
+                            <a class="sb-nav-link" asp-controller="Document" asp-action="Upload"
+                               data-ptc-tooltip="Upload Document">
+                                <span class="sb-nav-icon"><i class="bi bi-cloud-upload"></i></span>
+                                <span class="sb-nav-label">Upload Document</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-cloud-upload text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Upload Document</span>
+                            </a>
+                        }
+                    </li>
+                </ul>
+
+                <div class="sb-flyout">
+                    <div class="sb-flyout-header">Documents</div>
+                    @if (isCaseworker)
+                    {
+                        <a class="sb-flyout-item" asp-controller="Document" asp-action="Index">
+                            <i class="bi bi-folder"></i> All Documents
+                        </a>
+                        <a class="sb-flyout-item" asp-controller="Document" asp-action="Outstanding">
+                            <i class="bi bi-exclamation-circle"></i> Outstanding
+                        </a>
+                        <a class="sb-flyout-item" asp-controller="Document" asp-action="Upload">
+                            <i class="bi bi-cloud-upload"></i> Upload Document
+                        </a>
+                    }
+                    else
+                    {
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-folder text-muted"></i> All Documents
+                        </a>
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-exclamation-circle text-muted"></i> Outstanding
+                        </a>
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-cloud-upload text-muted"></i> Upload Document
+                        </a>
+                    }
+                </div>
+            </li>
+
+            @* ════ REPORTS ════ *@
+            <li class="sb-section-title">Reports</li>
+
+            <li class="has-submenu">
+                <button class="sb-nav-link" data-bs-toggle="collapse"
+                        data-bs-target="#menuReports" aria-expanded="false"
+                        data-ptc-tooltip="Reports">
+                    <span class="sb-nav-icon"><i class="bi bi-bar-chart-line"></i></span>
+                    <span class="sb-nav-label">Reports</span>
+                    <i class="bi bi-chevron-right sb-chevron"></i>
+                </button>
+
+                <ul class="collapse sb-submenu" id="menuReports">
+                    <li>
+                        @if (canViewReports)
+                        {
+                            <a class="sb-nav-link" asp-controller="Report" asp-action="CaseSummary"
+                               data-ptc-tooltip="Case Summary Report">
+                                <span class="sb-nav-icon"><i class="bi bi-clipboard-data"></i></span>
+                                <span class="sb-nav-label">Case Summary</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-clipboard-data text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Case Summary</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (canViewReports)
+                        {
+                            <a class="sb-nav-link" asp-controller="Report" asp-action="LimitationAlert"
+                               data-ptc-tooltip="Limitation Alert Report">
+                                <span class="sb-nav-icon"><i class="bi bi-shield-exclamation"></i></span>
+                                <span class="sb-nav-label">Limitation Alerts</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-shield-exclamation text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Limitation Alerts</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (canViewReports)
+                        {
+                            <a class="sb-nav-link" asp-controller="Report" asp-action="DisbursementSummary"
+                               data-ptc-tooltip="Disbursement Summary">
+                                <span class="sb-nav-icon"><i class="bi bi-receipt"></i></span>
+                                <span class="sb-nav-label">Disbursement Summary</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-receipt text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Disbursement Summary</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (canViewReports)
+                        {
+                            <a class="sb-nav-link" asp-controller="Report" asp-action="CaseworkerWorkload"
+                               data-ptc-tooltip="Caseworker Workload">
+                                <span class="sb-nav-icon"><i class="bi bi-people"></i></span>
+                                <span class="sb-nav-label">Caseworker Workload</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-people text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Caseworker Workload</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (canViewReports)
+                        {
+                            <a class="sb-nav-link" asp-controller="Report" asp-action="Export"
+                               data-ptc-tooltip="Export to Excel">
+                                <span class="sb-nav-icon"><i class="bi bi-download"></i></span>
+                                <span class="sb-nav-label">Export to Excel</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-download text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Export to Excel</span>
+                            </a>
+                        }
+                    </li>
+                </ul>
+
+                <div class="sb-flyout">
+                    <div class="sb-flyout-header">Reports</div>
+                    @if (canViewReports)
+                    {
+                        <a class="sb-flyout-item" asp-controller="Report" asp-action="CaseSummary">
+                            <i class="bi bi-clipboard-data"></i> Case Summary
+                        </a>
+                        <a class="sb-flyout-item" asp-controller="Report" asp-action="LimitationAlert">
+                            <i class="bi bi-shield-exclamation"></i> Limitation Alerts
+                        </a>
+                        <a class="sb-flyout-item" asp-controller="Report" asp-action="DisbursementSummary">
+                            <i class="bi bi-receipt"></i> Disbursement Summary
+                        </a>
+                        <a class="sb-flyout-item" asp-controller="Report" asp-action="CaseworkerWorkload">
+                            <i class="bi bi-people"></i> Caseworker Workload
+                        </a>
+                        <a class="sb-flyout-item" asp-controller="Report" asp-action="Export">
+                            <i class="bi bi-download"></i> Export to Excel
+                        </a>
+                    }
+                    else
+                    {
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-clipboard-data text-muted"></i> Case Summary
+                        </a>
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-shield-exclamation text-muted"></i> Limitation Alerts
+                        </a>
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-receipt text-muted"></i> Disbursement Summary
+                        </a>
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-people text-muted"></i> Caseworker Workload
+                        </a>
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-download text-muted"></i> Export to Excel
+                        </a>
+                    }
+                </div>
+            </li>
+
+            @* ════ SETTINGS ════ *@
+            <li class="sb-section-title">Settings</li>
+
+            @* ── Master Data ── *@
+            <li class="has-submenu">
+                <button class="sb-nav-link" data-bs-toggle="collapse"
+                        data-bs-target="#menuMasterData" aria-expanded="false"
+                        data-ptc-tooltip="Master Data">
+                    <span class="sb-nav-icon"><i class="bi bi-database"></i></span>
+                    <span class="sb-nav-label">Master Data</span>
+                    <i class="bi bi-chevron-right sb-chevron"></i>
+                </button>
+
+                <ul class="collapse sb-submenu" id="menuMasterData">
+                    <li>
+                        @if (isAdmin || 1==1)
+                        {
+                            <a class="sb-nav-link" asp-controller="Master" asp-action="CaseStatus"
+                               data-ptc-tooltip="Case Statuses">
+                                <span class="sb-nav-icon"><i class="bi bi-tags"></i></span>
+                                <span class="sb-nav-label">Case Statuses</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-tags text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Case Statuses</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (isAdmin)
+                        {
+                            <a class="sb-nav-link" asp-controller="Master" asp-action="CourtVenue"
+                               data-ptc-tooltip="Court Venues">
+                                <span class="sb-nav-icon"><i class="bi bi-geo-alt"></i></span>
+                                <span class="sb-nav-label">Court Venues</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-geo-alt text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Court Venues</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (isAdmin)
+                        {
+                            <a class="sb-nav-link" asp-controller="Master" asp-action="InsurerRegistry"
+                               data-ptc-tooltip="Insurer Registry">
+                                <span class="sb-nav-icon"><i class="bi bi-building"></i></span>
+                                <span class="sb-nav-label">Insurer Registry</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-building text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Insurer Registry</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (isAdmin)
+                        {
+                            <a class="sb-nav-link" asp-controller="Master" asp-action="Caseworker"
+                               data-ptc-tooltip="Caseworker Profiles">
+                                <span class="sb-nav-icon"><i class="bi bi-person-badge"></i></span>
+                                <span class="sb-nav-label">Caseworker Profiles</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-person-badge text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Caseworker Profiles</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (isAdmin)
+                        {
+                            <a class="sb-nav-link" asp-controller="Master" asp-action="DisbursementCategory"
+                               data-ptc-tooltip="Disbursement Categories">
+                                <span class="sb-nav-icon"><i class="bi bi-list-check"></i></span>
+                                <span class="sb-nav-label">Disbursement Categories</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-list-check text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Disbursement Categories</span>
+                            </a>
+                        }
+                    </li>
+                </ul>
+
+                <div class="sb-flyout">
+                    <div class="sb-flyout-header">Master Data</div>
+                    @if (isAdmin)
+                    {
+                        <a class="sb-flyout-item" asp-controller="Master" asp-action="CaseStatus">
+                            <i class="bi bi-tags"></i> Case Statuses
+                        </a>
+                        <a class="sb-flyout-item" asp-controller="Master" asp-action="CourtVenue">
+                            <i class="bi bi-geo-alt"></i> Court Venues
+                        </a>
+                        <a class="sb-flyout-item" asp-controller="Master" asp-action="InsurerRegistry">
+                            <i class="bi bi-building"></i> Insurer Registry
+                        </a>
+                        <a class="sb-flyout-item" asp-controller="Master" asp-action="Caseworker">
+                            <i class="bi bi-person-badge"></i> Caseworker Profiles
+                        </a>
+                        <a class="sb-flyout-item" asp-controller="Master" asp-action="DisbursementCategory">
+                            <i class="bi bi-list-check"></i> Disbursement Categories
+                        </a>
+                    }
+                    else
+                    {
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-tags text-muted"></i> Case Statuses
+                        </a>
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-geo-alt text-muted"></i> Court Venues
+                        </a>
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-building text-muted"></i> Insurer Registry
+                        </a>
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-person-badge text-muted"></i> Caseworker Profiles
+                        </a>
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-list-check text-muted"></i> Disbursement Categories
+                        </a>
+                    }
+                </div>
+            </li>
+
+            @* ════ SECURITY ════ *@
+            <li class="sb-section-title">Security</li>
+
+            <li class="has-submenu">
+                <button class="sb-nav-link" data-bs-toggle="collapse"
+                        data-bs-target="#menuAccessControl" aria-expanded="false"
+                        data-ptc-tooltip="Access Control">
+                    <span class="sb-nav-icon"><i class="bi bi-shield-lock"></i></span>
+                    <span class="sb-nav-label">Access Control</span>
+                    <i class="bi bi-chevron-right sb-chevron"></i>
+                </button>
+
+                <ul class="collapse sb-submenu" id="menuAccessControl">
+                    <li>
+                        @if (canAccessControl || 1==1)
+                        {
+                            <a class="sb-nav-link" asp-controller="Access" asp-action="UserRoles">
+                                <span class="sb-nav-icon"><i class="bi bi-people"></i></span>
+                                <span class="sb-nav-label">User / Role Management</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-people text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">User / Role Management</span>
+                            </a>
+                        }
+                    </li>
+                    <li>
+                        @if (canAccessControl || 1==1)
+                        {
+                            <a class="sb-nav-link" asp-controller="AuditLog" asp-action="Index">
+                                <span class="sb-nav-icon"><i class="bi bi-journal-text"></i></span>
+                                <span class="sb-nav-label">Audit Log</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a class="sb-nav-link disabled" tabindex="-1" aria-disabled="true">
+                                <span class="sb-nav-icon"><i class="bi bi-journal-text text-muted"></i></span>
+                                <span class="sb-nav-label text-muted">Audit Log</span>
+                            </a>
+                        }
+                    </li>
+                </ul>
+
+                <div class="sb-flyout">
+                    <div class="sb-flyout-header">Access Control</div>
+                    @if (canAccessControl || 1==1)
+                    {
+                        <a class="sb-flyout-item" asp-controller="Access" asp-action="UserRoles">
+                            <i class="bi bi-people"></i> User / Role Management
+                        </a>
+                        <a class="sb-flyout-item" asp-controller="AuditLog" asp-action="Index">
+                            <i class="bi bi-journal-text"></i> Audit Log
+                        </a>
+                    }
+                    else
+                    {
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-people text-muted"></i> User / Role Management
+                        </a>
+                        <a class="sb-flyout-item disabled" tabindex="-1" aria-disabled="true">
+                            <i class="bi bi-journal-text text-muted"></i> Audit Log
+                        </a>
+                    }
+                </div>
+            </li>
+
+        </ul>
+    </div>
+
+    @* ── Footer: Sign Out ── *@
+    <div class="sb-footer-nav">
+        <button class="sb-nav-link" data-ptc-tooltip="Sign Out" id="btnSidebarSignOut">
+            <span class="sb-nav-icon"><i class="bi bi-box-arrow-left"></i></span>
+            <span class="sb-nav-label">Sign Out</span>
+        </button>
+    </div>
+
+</nav>
+
+<script>
+    (function () {
+        document.addEventListener('DOMContentLoaded', function () {
+
+            var body     = document.body;
+            var submenus = document.querySelectorAll('.sb-submenu');
+            var openSubmenuIds = [];
+
+            function hideAllSubmenus() {
+                openSubmenuIds = [];
+                submenus.forEach(function (sm) {
+                    if (sm.classList.contains('show')) openSubmenuIds.push(sm.id);
+                    sm.classList.remove('show');
+                    var btn = document.querySelector('[data-bs-target="#' + sm.id + '"]');
+                    if (btn) btn.setAttribute('aria-expanded', 'false');
+                });
+            }
+
+            function restoreSubmenus() {
+                submenus.forEach(function (sm) {
+                    if (openSubmenuIds.indexOf(sm.id) !== -1) {
+                        sm.classList.add('show');
+                        var btn = document.querySelector('[data-bs-target="#' + sm.id + '"]');
+                        if (btn) btn.setAttribute('aria-expanded', 'true');
+                    }
+                });
+            }
+
+            /* ── Position flyout vertically on hover ── */
+            document.querySelectorAll('.has-submenu').forEach(function (li) {
+                var flyout = li.querySelector('.sb-flyout');
+                if (!flyout) return;
+                li.addEventListener('mouseenter', function () {
+                    if (!body.classList.contains('sidebar-collapsed')) return;
+                    var rect = li.getBoundingClientRect();
+                    flyout.style.top = rect.top + 'px';
+                });
+            });
+
+            /* ── Watch sidebar collapse/expand ── */
+            var wasCollapsed = body.classList.contains('sidebar-collapsed');
+
+            new MutationObserver(function () {
+                var isCollapsed = body.classList.contains('sidebar-collapsed');
+                if (isCollapsed  && !wasCollapsed) hideAllSubmenus();
+                if (!isCollapsed &&  wasCollapsed) restoreSubmenus();
+                wasCollapsed = isCollapsed;
+            }).observe(body, { attributes: true, attributeFilter: ['class'] });
+
+            if (body.classList.contains('sidebar-collapsed')) hideAllSubmenus();
+
+            /* ── Sign Out ── */
+            var signOutBtn = document.getElementById('btnSidebarSignOut');
+            if (signOutBtn) {
+                signOutBtn.addEventListener('click', function () {
+                    if (typeof KSwal !== 'undefined') {
+                        KSwal.confirm(
+                            'Sign Out?',
+                            'You will be signed out of the LegalCase MVA system.',
+                            function () { document.getElementById('logoutForm').submit(); }
+                        );
+                    } else {
+                        if (confirm('Sign out of LegalCase MVA?')) {
+                            document.getElementById('logoutForm').submit();
+                        }
+                    }
+                });
+            }
+
+        });
+    }());
+</script>

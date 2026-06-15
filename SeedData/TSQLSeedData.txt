@@ -1,0 +1,587 @@
+﻿-- ═══════════════════════════════════════════════════════════════════════
+-- IMS AGENCY — DEMO / SEED DATA SCRIPT
+-- Run AFTER: dotnet ef database update (InitialCreate)
+-- Purpose:   Populate ImsAgencyDB with realistic sample data for the
+--            KPI Dashboard, Renewal Pipeline, Claims, and Reports demos.
+-- ═══════════════════════════════════════════════════════════════════════
+
+USE ImsAgencyDB;
+GO
+
+-- ───────────────────────────────────────────────────────────────────────
+-- OPTIONAL CLEANUP (uncomment to wipe demo data and re-seed from scratch)
+-- ───────────────────────────────────────────────────────────────────────
+/*
+DELETE FROM LhdnEInvoiceRecords;
+DELETE FROM ClaimDocuments;
+DELETE FROM Claims;
+DELETE FROM RenewalNotices;
+DELETE FROM CustomerPaymentLedgers;
+DELETE FROM PolicyGroupEmployees;
+DELETE FROM PremiumLedgers;
+DELETE FROM Policies;
+DELETE FROM Vehicles;
+DELETE FROM ClientAddresses;
+DELETE FROM ClientPhones;
+DELETE FROM Clients;
+DELETE FROM AgentProfiles;
+DELETE FROM VehicleMakes;
+DELETE FROM NcdRates;
+DELETE FROM PolicyClasses;
+DELETE FROM Insurers;
+*/
+
+-- ───────────────────────────────────────────────────────────────────────
+-- GUARD: skip everything if already seeded (checks for our marker insurer)
+-- ───────────────────────────────────────────────────────────────────────
+IF EXISTS (SELECT 1 FROM Insurers WHERE InsurerCode = 'MSIG')
+BEGIN
+    PRINT 'Seed data already exists — skipping. Use the cleanup block above to re-seed.';
+    RETURN;
+END
+
+BEGIN TRANSACTION;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 1 — INSURERS (10)
+-- ═══════════════════════════════════════════════════════════════════════
+SET IDENTITY_INSERT Insurers ON;
+
+INSERT INTO Insurers (InsurerId, InsurerCode, InsurerName, InsurerType, ContactPhone, ContactEmail, IsActive, CreatedAt) VALUES
+(1,  'MSIG', 'MSIG Insurance (Malaysia) Bhd',          'Both',     '1-300-88-6674', 'customercare@msig.com.my',  1, '2025-01-01'),
+(2,  'ALZ',  'Allianz General Insurance Malaysia Bhd', 'Both',     '1-300-22-5542', 'info@allianz.com.my',       1, '2025-01-01'),
+(3,  'ETQ',  'Etiqa General Takaful Bhd',              'Both',     '1-300-13-8888', 'careline@etiqa.com.my',     1, '2025-01-01'),
+(4,  'BER',  'Berjaya Sompo Insurance Bhd',            'Both',     '1-300-88-7720', 'enquiry@bsompo.com.my',     1, '2025-01-01'),
+(5,  'AIG',  'AIG Malaysia Insurance Bhd',             'Both',     '1-800-88-1063', 'mycare@aig.com',            1, '2025-01-01'),
+(6,  'ZUR',  'Zurich General Insurance Malaysia Bhd',  'Both',     '1-300-888-622', 'info@zurich.com.my',        1, '2025-01-01'),
+(7,  'CGA',  'Chubb Insurance Malaysia Bhd',           'Both',     '1-800-815-300', 'mycare@chubb.com',          1, '2025-01-01'),
+(8,  'LIB',  'Liberty Insurance Bhd',                  'Both',     '1-300-88-3690', 'customerservice@libertyinsurance.com.my', 1, '2025-01-01'),
+(9,  'POS',  'Pos Malaysia & Services Holdings Bhd',   'Motor',    '1-300-300-300', 'callcenter@pos.com.my',     1, '2025-01-01'),
+(10, 'AXA',  'AXA Affin General Insurance Bhd',        'Both',     '1-800-88-1199', 'customer.mc@axa-affin.com.my', 1, '2025-01-01');
+
+SET IDENTITY_INSERT Insurers OFF;
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 2 — POLICY CLASSES (10)
+-- ═══════════════════════════════════════════════════════════════════════
+SET IDENTITY_INSERT PolicyClasses ON;
+
+INSERT INTO PolicyClasses (PolicyClassId, ClassCode, ClassName, ClassCategory, IsActive, DisplayOrder, CreatedAt) VALUES
+(1,  'MTRCAR',  'Motor Private Car',        'Motor',    1, 1,  '2025-01-01'),
+(2,  'MTRBIKE', 'Motor Motorcycle',         'Motor',    1, 2,  '2025-01-01'),
+(3,  'MTRCV',   'Motor Commercial Vehicle', 'Motor',    1, 3,  '2025-01-01'),
+(4,  'FWHS',    'Foreign Worker Hospitalisation', 'NonMotor', 1, 4,  '2025-01-01'),
+(5,  'MEDHLT',  'Medical & Health',         'NonMotor', 1, 5,  '2025-01-01'),
+(6,  'PA',      'Personal Accident',        'NonMotor', 1, 6,  '2025-01-01'),
+(7,  'HOMEOW',  'Home Owner',               'NonMotor', 1, 7,  '2025-01-01'),
+(8,  'HOMEHL',  'Householder Contents',     'NonMotor', 1, 8,  '2025-01-01'),
+(9,  'TRAVEL',  'Travel Insurance',         'NonMotor', 1, 9,  '2025-01-01'),
+(10, 'FIRE',    'Fire & Allied Perils',     'NonMotor', 1, 10, '2025-01-01');
+
+SET IDENTITY_INSERT PolicyClasses OFF;
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 3 — NCD RATES (Malaysian Tariff, EffectiveYear 2026)
+-- ═══════════════════════════════════════════════════════════════════════
+SET IDENTITY_INSERT NcdRates ON;
+
+INSERT INTO NcdRates (NcdRateId, ClaimFreeYears, NcdPercentage, EffectiveYear, CreatedAt) VALUES
+(1, 1, 25.00, 2026, '2025-01-01'),
+(2, 2, 30.00, 2026, '2025-01-01'),
+(3, 3, 38.33, 2026, '2025-01-01'),
+(4, 4, 45.00, 2026, '2025-01-01'),
+(5, 5, 55.00, 2026, '2025-01-01');
+
+SET IDENTITY_INSERT NcdRates OFF;
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 4 — VEHICLE MAKES (10)
+-- ═══════════════════════════════════════════════════════════════════════
+SET IDENTITY_INSERT VehicleMakes ON;
+
+INSERT INTO VehicleMakes (VehicleMakeId, MakeCode, MakeName, CountryOfOrigin, IsActive, CreatedAt) VALUES
+(1,  'TOY', 'Toyota',   'Japan',    1, '2025-01-01'),
+(2,  'HON', 'Honda',    'Japan',    1, '2025-01-01'),
+(3,  'PRD', 'Perodua',  'Malaysia', 1, '2025-01-01'),
+(4,  'PRT', 'Proton',   'Malaysia', 1, '2025-01-01'),
+(5,  'NIS', 'Nissan',   'Japan',    1, '2025-01-01'),
+(6,  'MAZ', 'Mazda',    'Japan',    1, '2025-01-01'),
+(7,  'TSL', 'Tesla',    'USA',      1, '2025-01-01'),
+(8,  'YAM', 'Yamaha',   'Japan',    1, '2025-01-01'),
+(9,  'KAW', 'Kawasaki', 'Japan',    1, '2025-01-01'),
+(10, 'BMW', 'BMW',      'Germany',  1, '2025-01-01');
+
+SET IDENTITY_INSERT VehicleMakes OFF;
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 5 — AGENT PROFILES (5)
+-- IdentityUserId left NULL for now — will be linked to AspNetUsers once
+-- the first Admin/Agent login accounts are created (chicken-and-egg step,
+-- same as MVA's Step 1.5 raw-SQL admin seeding).
+-- ═══════════════════════════════════════════════════════════════════════
+SET IDENTITY_INSERT AgentProfiles ON;
+
+INSERT INTO AgentProfiles (AgentId, IdentityUserId, AgentCode, FullName, AgentType, LicenseNumber, LicenseExpiryDate, Email, MobileNumber, JoinedDate, IsActive, CreatedAt) VALUES
+(1, NULL, 'AGT-001', 'Nurul Huda binti Rashid',     'Admin',       'PIAM-AD-1001', '2027-12-31', 'nurul.admin@imsagency.com.my',  '012-3456001', '2023-01-15', 1, '2025-01-01'),
+(2, NULL, 'AGT-002', 'Vincent Tan Wei Loon',        'SeniorAgent', 'PIAM-SA-2002', '2027-06-30', 'vincent.tan@imsagency.com.my',  '012-3456002', '2023-03-01', 1, '2025-01-01'),
+(3, NULL, 'AGT-003', 'Siti Aminah binti Yusof',     'Agent',       'PIAM-AG-3003', '2027-09-30', 'siti.aminah@imsagency.com.my',  '012-3456003', '2024-02-10', 1, '2025-01-01'),
+(4, NULL, 'AGT-004', 'Kumaresan A/L Murthy',        'Agent',       'PIAM-AG-3004', '2027-04-30', 'kumaresan@imsagency.com.my',    '012-3456004', '2024-05-20', 1, '2025-01-01'),
+(5, NULL, 'AGT-005', 'Farah Diyana binti Zulkifli', 'Support',     NULL,           NULL,         'farah.diyana@imsagency.com.my', '012-3456005', '2024-08-01', 1, '2025-01-01');
+
+SET IDENTITY_INSERT AgentProfiles OFF;
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 6 — CLIENTS (8, from spec sample data)
+-- ═══════════════════════════════════════════════════════════════════════
+SET IDENTITY_INSERT Clients ON;
+
+INSERT INTO Clients (ClientId, ClientCode, ClientType, ClientName, IdentificationNumber, IdentificationType, DateOfBirth, Gender, EmailAddress, OccupationOrBusiness, IsBlacklisted, IsActive, Remarks, CreatedAt, UpdatedAt) VALUES
+(1, 'CLT-2024-0001', 'Company',    'YEE GUAN FURNITURE MFG SDN BHD', '199501023456',   'BRN',      NULL,         'Unknown', 'accounts@yeeguan.com.my',   'Furniture Manufacturing', 0, 1, NULL, '2025-01-10', NULL),
+(2, 'CLT-2024-0002', 'Individual', 'AHMAD BIN IBRAHIM',              '850101-14-5678', 'NRIC',     '1985-01-01', 'Male',    'ahmad.ibrahim@gmail.com',   'Civil Servant',           0, 1, NULL, '2025-01-12', NULL),
+(3, 'CLT-2024-0003', 'Individual', 'LIM SIEW LING',                  '920315-08-1234', 'NRIC',     '1992-03-15', 'Female',  'limsl@gmail.com',           'Accountant',              0, 1, NULL, '2025-01-15', NULL),
+(4, 'CLT-2024-0004', 'Individual', 'RAJENDRAN A/L MUTHU',            '780601-10-9876', 'NRIC',     '1978-06-01', 'Male',    'rajen.muthu@gmail.com',     'Lorry Driver',            0, 1, NULL, '2025-01-18', NULL),
+(5, 'CLT-2024-0005', 'Individual', 'FATIMAH BINTI HASSAN',           '901212-03-4567', 'NRIC',     '1990-12-12', 'Female',  'fatimah.hassan@gmail.com',  'Teacher',                 0, 1, NULL, '2025-02-01', NULL),
+(6, 'CLT-2024-0006', 'Company',    'TAN AH KOW TRADING SDN BHD',     '200101056789',   'BRN',      NULL,         'Unknown', 'admin@tanahkow.com.my',     'General Trading',         0, 1, NULL, '2025-02-05', NULL),
+(7, 'CLT-2024-0007', 'Individual', 'MOHD HAFIZ BIN ZAKARIA',         '870909-05-2233', 'NRIC',     '1987-09-09', 'Male',    'hafiz.zakaria@gmail.com',   'Engineer',                0, 1, NULL, '2025-02-10', NULL),
+(8, 'CLT-2024-0008', 'Individual', 'CHEN WEI LING',                  '950808-14-6688', 'NRIC',     '1995-08-08', 'Female',  'chenwl@gmail.com',          'Pharmacist',              0, 1, NULL, '2025-02-15', NULL);
+
+SET IDENTITY_INSERT Clients OFF;
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 7 — CLIENT PHONES (1 primary mobile per client)
+-- ═══════════════════════════════════════════════════════════════════════
+SET IDENTITY_INSERT ClientPhones ON;
+
+INSERT INTO ClientPhones (PhoneId, ClientId, PhoneNumber, PhoneType, IsPrimary, IsWhatsApp) VALUES
+(1, 1, '07-7761234', 'O', 1, 0),
+(2, 2, '012-3987654', 'M', 1, 1),
+(3, 3, '016-5551234', 'M', 1, 1),
+(4, 4, '019-2223344', 'M', 1, 1),
+(5, 5, '013-7778899', 'M', 1, 1),
+(6, 6, '07-4341122', 'O', 1, 0),
+(7, 7, '017-6665544', 'M', 1, 1),
+(8, 8, '014-9998877', 'M', 1, 1);
+
+SET IDENTITY_INSERT ClientPhones OFF;
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 8 — CLIENT ADDRESSES (1 primary residential/business per client)
+-- ═══════════════════════════════════════════════════════════════════════
+SET IDENTITY_INSERT ClientAddresses ON;
+
+INSERT INTO ClientAddresses (AddressId, ClientId, AddressType, AddressLine1, AddressLine2, City, State, Postcode, IsPrimary) VALUES
+(1, 1, 'Business',    'Lot 23, Jalan Perusahaan 5',     'Kawasan Perindustrian Kluang', 'Kluang',    'Johor',    '86000', 1),
+(2, 2, 'Residential', 'No. 12, Jalan Anggerik 3',       'Taman Anggerik',               'Shah Alam', 'Selangor', '40400', 1),
+(3, 3, 'Residential', '45, Lebuh Cintra',               NULL,                           'George Town','Pulau Pinang','10250', 1),
+(4, 4, 'Residential', 'No. 8, Jalan Meru Indah 2',      'Taman Meru Indah',             'Klang',     'Selangor', '41050', 1),
+(5, 5, 'Residential', 'No. 17, Jalan Tun Ismail',       NULL,                           'Kuantan',   'Pahang',   '25000', 1),
+(6, 6, 'Business',    'No. 5, Jalan Sultanah 10',       NULL,                           'Batu Pahat','Johor',    '83000', 1),
+(7, 7, 'Residential', 'No. 3, Jalan Dato Mohd Yusof',   'Taman Sri Kluang',             'Kluang',    'Johor',    '86000', 1),
+(8, 8, 'Residential', 'No. 21, Jalan Bakri',            NULL,                           'Muar',      'Johor',    '84000', 1);
+
+SET IDENTITY_INSERT ClientAddresses OFF;
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 9 — VEHICLES (8 — includes 1 EV for Feature 3 demo)
+-- ═══════════════════════════════════════════════════════════════════════
+SET IDENTITY_INSERT Vehicles ON;
+
+INSERT INTO Vehicles (VehicleId, RegistrationNumber, MakeAndModel, ManufactureYear, EngineNumber, ChassisNumber, EngineCapacityCC, SeatingCapacity, VehicleUsage, IsElectricVehicle, VehicleColour, MarketValue, IsActive, CreatedAt) VALUES
+(1, 'JKD2819', 'Toyota Vios 1.5E',     2019, 'ENG-TV-001', 'CHS-TV-001', 1497, 5, 'Private',           0, 'Silver', 42000.00,  1, '2025-01-10'),
+(2, 'WXY1234', 'Perodua Myvi 1.5H',    2021, 'ENG-PM-002', 'CHS-PM-002', 1496, 5, 'Private',           0, 'Red',    48000.00,  1, '2025-01-12'),
+(3, 'BBT4567', 'Honda City 1.5S',      2020, 'ENG-HC-003', 'CHS-HC-003', 1497, 5, 'Private',           0, 'White',  58000.00,  1, '2025-01-15'),
+(4, 'JHH5678', 'Proton X50 1.5T',      2022, 'ENG-PX-004', 'CHS-PX-004', 1497, 5, 'Private',           0, 'Blue',   98000.00,  1, '2025-01-18'),
+(5, 'VDD9912', 'Yamaha Y15ZR',         2020, 'ENG-YZ-005', 'CHS-YZ-005', 150,  2, 'Private',           0, 'Black',  7000.00,   1, '2025-02-01'),
+(6, 'QSJ3344', 'Honda HR-V 1.8',       2021, 'ENG-HR-006', 'CHS-HR-006', 1799, 5, 'Private',           0, 'Grey',   95000.00,  1, '2025-02-10'),
+(7, 'VAB8821', 'Tesla Model 3',        2023, 'ENG-TM-007', 'CHS-TM-007', 0,    5, 'Private',           1, 'White',  185000.00, 1, '2025-03-01'),
+(8, 'WA2298',  'Toyota Hilux 2.4G',    2020, 'ENG-TH-008', 'CHS-TH-008', 2393, 5, 'CommercialGoods',   0, 'White',  78000.00,  1, '2025-03-05');
+
+SET IDENTITY_INSERT Vehicles OFF;
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 10 — POLICIES (15)
+-- Expiry dates use DATEADD(DAY, n, GETUTCDATE()) so the Renewal Pipeline
+-- (Due 30/60/90, Expired) always has live demo data.
+--
+--   #  CoverNote      Client  Vehicle  Insurer  Class    Status    Expiry(offset)
+--   1  CN-2024-10001  1       1(JKD)   MSIG     MTRCAR   Active     +18  (renewal of #12)
+--   2  CN-2024-10002  2       2(WXY)   ALZ      MTRCAR   Active     +45
+--   3  CN-2024-10003  3       3(BBT)   ETQ      MTRCAR   Active     +75
+--   4  CN-2024-10004  4       5(VDD)   BER      MTRBIKE  Active    +100
+--   5  CN-2025-10005  5       4(JHH)   AXA      MTRCAR   Active      +9  (urgent)
+--   6  CN-2025-10006  6       NULL     ETQ      FWHS     Active    +200  (group)
+--   7  CN-2025-10007  7       6(QSJ)   ZUR      MTRCAR   Expired    -12
+--   8  CN-2025-10008  8       NULL     AIG      PA       Active    +150
+--   9  CN-2025-10009  1       7(VAB)   ALZ      MTRCAR   Active     +60  (EV)
+--  10  CN-2025-10010  2       NULL     LIB      HOMEOW   Active    +250
+--  11  CN-2025-10011  3       8(WA)    POS      MTRCV    Active      +5  (urgent)
+--  12  CN-2023-10000  1       1(JKD)   MSIG     MTRCAR   Expired   -377  (prior of #1)
+--  13  CN-2025-10012  4       NULL     CGA      TRAVEL   Active     +30
+--  14  CN-2026-10013  6       NULL     BER      MEDHLT   Cancelled +180
+--  15  CN-2026-10014  7       6(QSJ)   MSIG     MTRCAR   Quoted    +354  (renewal quote of #7)
+-- ═══════════════════════════════════════════════════════════════════════
+SET IDENTITY_INSERT Policies ON;
+
+INSERT INTO Policies
+    (PolicyId, CoverNoteNumber, PolicyNumber, ClientId, VehicleId, InsurerId, PolicyClassCode,
+     PolicyStatus, StartDate, ExpiryDate, NcdPercentage, SumInsured, AgentCode,
+     IsRenewal, PreviousPolicyId, RenewalReminderSentAt, RenewalReminderCount,
+     Remarks, CreatedAt, UpdatedAt, CreatedBy, UpdatedBy)
+VALUES
+-- #1 — Active, expiring in 18 days (renewal of #12)
+(1, 'CN-2024-10001', 'POL-MSIG-880011', 1, 1, 1, 'MTRCAR', 'Active',
+    DATEADD(DAY, 18 - 365, GETUTCDATE()), DATEADD(DAY, 18, GETUTCDATE()),
+    55.00, 45000.00, 'AGT-002', 1, NULL, NULL, 0,
+    NULL, DATEADD(DAY, 18 - 365, GETUTCDATE()), NULL, 'seed-script', NULL),
+
+-- #2 — Active, expiring in 45 days
+(2, 'CN-2024-10002', 'POL-ALZ-771122', 2, 2, 2, 'MTRCAR', 'Active',
+    DATEADD(DAY, 45 - 365, GETUTCDATE()), DATEADD(DAY, 45, GETUTCDATE()),
+    38.33, 42000.00, 'AGT-003', 0, NULL, NULL, 0,
+    NULL, DATEADD(DAY, 45 - 365, GETUTCDATE()), NULL, 'seed-script', NULL),
+
+-- #3 — Active, expiring in 75 days
+(3, 'CN-2024-10003', 'POL-ETQ-663344', 3, 3, 3, 'MTRCAR', 'Active',
+    DATEADD(DAY, 75 - 365, GETUTCDATE()), DATEADD(DAY, 75, GETUTCDATE()),
+    25.00, 55000.00, 'AGT-004', 0, NULL, NULL, 0,
+    NULL, DATEADD(DAY, 75 - 365, GETUTCDATE()), NULL, 'seed-script', NULL),
+
+-- #4 — Active motorcycle, expiring in 100 days
+(4, 'CN-2024-10004', 'POL-BER-554433', 4, 5, 4, 'MTRBIKE', 'Active',
+    DATEADD(DAY, 100 - 365, GETUTCDATE()), DATEADD(DAY, 100, GETUTCDATE()),
+    0.00, 6500.00, 'AGT-003', 0, NULL, NULL, 0,
+    NULL, DATEADD(DAY, 100 - 365, GETUTCDATE()), NULL, 'seed-script', NULL),
+
+-- #5 — Active, URGENT expiring in 9 days
+(5, 'CN-2025-10005', 'POL-AXA-998877', 5, 4, 10, 'MTRCAR', 'Active',
+    DATEADD(DAY, 9 - 365, GETUTCDATE()), DATEADD(DAY, 9, GETUTCDATE()),
+    30.00, 95000.00, 'AGT-002', 0, NULL, DATEADD(DAY, -2, GETUTCDATE()), 1,
+    'Client requested e-invoice copy', DATEADD(DAY, 9 - 365, GETUTCDATE()), NULL, 'seed-script', NULL),
+
+-- #6 — Active GROUP policy (FWHS), expiring in 200 days
+(6, 'CN-2025-10006', 'POL-ETQ-FWHS-001', 6, NULL, 3, 'FWHS', 'Active',
+    DATEADD(DAY, 200 - 365, GETUTCDATE()), DATEADD(DAY, 200, GETUTCDATE()),
+    0.00, 30000.00, 'AGT-004', 0, NULL, NULL, 0,
+    'Covers 3 foreign workers — see PolicyGroupEmployees', DATEADD(DAY, 200 - 365, GETUTCDATE()), NULL, 'seed-script', NULL),
+
+-- #7 — EXPIRED, 12 days ago
+(7, 'CN-2025-10007', 'POL-ZUR-332211', 7, 6, 6, 'MTRCAR', 'Expired',
+    DATEADD(DAY, -12 - 365, GETUTCDATE()), DATEADD(DAY, -12, GETUTCDATE()),
+    45.00, 80000.00, 'AGT-003', 0, NULL, DATEADD(DAY, -42, GETUTCDATE()), 3,
+    'Renewal quote issued — see CN-2026-10014', DATEADD(DAY, -12 - 365, GETUTCDATE()), NULL, 'seed-script', NULL),
+
+-- #8 — Active Personal Accident, expiring in 150 days
+(8, 'CN-2025-10008', 'POL-AIG-PA-1188', 8, NULL, 5, 'PA', 'Active',
+    DATEADD(DAY, 150 - 365, GETUTCDATE()), DATEADD(DAY, 150, GETUTCDATE()),
+    0.00, 100000.00, 'AGT-005', 0, NULL, NULL, 0,
+    NULL, DATEADD(DAY, 150 - 365, GETUTCDATE()), NULL, 'seed-script', NULL),
+
+-- #9 — Active EV policy (Tesla), expiring in 60 days
+(9, 'CN-2025-10009', 'POL-ALZ-EV-3001', 1, 7, 2, 'MTRCAR', 'Active',
+    DATEADD(DAY, 60 - 365, GETUTCDATE()), DATEADD(DAY, 60, GETUTCDATE()),
+    25.00, 180000.00, 'AGT-002', 0, NULL, NULL, 0,
+    'EV — includes EV Charger Extension addon', DATEADD(DAY, 60 - 365, GETUTCDATE()), NULL, 'seed-script', NULL),
+
+-- #10 — Active Home Owner, expiring in 250 days
+(10, 'CN-2025-10010', 'POL-LIB-HOME-552', 2, NULL, 8, 'HOMEOW', 'Active',
+    DATEADD(DAY, 250 - 365, GETUTCDATE()), DATEADD(DAY, 250, GETUTCDATE()),
+    0.00, 600000.00, 'AGT-003', 0, NULL, NULL, 0,
+    NULL, DATEADD(DAY, 250 - 365, GETUTCDATE()), NULL, 'seed-script', NULL),
+
+-- #11 — Active Commercial Vehicle, URGENT expiring in 5 days
+(11, 'CN-2025-10011', 'POL-POS-CV-7711', 3, 8, 9, 'MTRCV', 'Active',
+    DATEADD(DAY, 5 - 365, GETUTCDATE()), DATEADD(DAY, 5, GETUTCDATE()),
+    38.33, 70000.00, 'AGT-004', 0, NULL, DATEADD(DAY, -1, GETUTCDATE()), 2,
+    NULL, DATEADD(DAY, 5 - 365, GETUTCDATE()), NULL, 'seed-script', NULL),
+
+-- #12 — EXPIRED (prior-year policy of #1, 377 days ago)
+(12, 'CN-2023-10000', 'POL-MSIG-770099', 1, 1, 1, 'MTRCAR', 'Expired',
+    DATEADD(DAY, -377 - 365, GETUTCDATE()), DATEADD(DAY, -377, GETUTCDATE()),
+    45.00, 45000.00, 'AGT-002', 0, NULL, NULL, 0,
+    'Renewed as CN-2024-10001', DATEADD(DAY, -377 - 365, GETUTCDATE()), NULL, 'seed-script', NULL),
+
+-- #13 — Active Travel policy, expiring in 30 days
+(13, 'CN-2025-10012', 'POL-CGA-TRV-440', 4, NULL, 7, 'TRAVEL', 'Active',
+    DATEADD(DAY, 30 - 60, GETUTCDATE()), DATEADD(DAY, 30, GETUTCDATE()),
+    0.00, 50000.00, 'AGT-003', 0, NULL, NULL, 0,
+    'Short-term travel policy (2-month term)', DATEADD(DAY, 30 - 60, GETUTCDATE()), NULL, 'seed-script', NULL),
+
+-- #14 — CANCELLED Medical & Health policy
+(14, 'CN-2026-10013', NULL, 6, NULL, 4, 'MEDHLT', 'Cancelled',
+    DATEADD(DAY, -30, GETUTCDATE()), DATEADD(DAY, 180, GETUTCDATE()),
+    0.00, 200000.00, 'AGT-004', 0, NULL, NULL, 0,
+    'Cancelled by client within cooling-off period', DATEADD(DAY, -30, GETUTCDATE()), DATEADD(DAY, -25, GETUTCDATE()), 'seed-script', 'seed-script'),
+
+-- #15 — QUOTED renewal of #7 (PreviousPolicyId set in UPDATE pass below)
+(15, 'CN-2026-10014', NULL, 7, 6, 1, 'MTRCAR', 'Quoted',
+    DATEADD(DAY, -11, GETUTCDATE()), DATEADD(DAY, 354, GETUTCDATE()),
+    45.00, 80000.00, 'AGT-003', 1, NULL, NULL, 0,
+    'Renewal quote prepared, awaiting client confirmation', DATEADD(DAY, -2, GETUTCDATE()), NULL, 'seed-script', NULL);
+
+SET IDENTITY_INSERT Policies OFF;
+
+-- ---- Second pass: wire up self-referencing PreviousPolicyId ----
+UPDATE Policies SET PreviousPolicyId = 12 WHERE PolicyId = 1;   -- #1 renews #12
+UPDATE Policies SET PreviousPolicyId = 7  WHERE PolicyId = 15;  -- #15 is renewal quote of #7
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 11 — PREMIUM LEDGERS
+-- One row per policy that has been priced (#14 Cancelled and #15 Quoted
+-- are intentionally left WITHOUT a PremiumLedger — matches real workflow:
+-- Cancelled policies may have had one originally, Quoted policies don't
+-- have one yet until the quote is accepted).
+--
+-- Formula applied: NetPremium = GrossPremium - NcdDiscount
+--                  ServiceTax  = (NetPremium + TotalAddon) x 8%
+--                  StampDuty   = 10.00 (fixed)
+--                  NetPremiumPayable = NetPremium + TotalAddon + ServiceTax + StampDuty
+-- ═══════════════════════════════════════════════════════════════════════
+INSERT INTO PremiumLedgers
+    (PolicyId, SumInsuredAmount, GrossPremium, NcdDiscountAmount, NetPremium,
+     AddonWindscreen, AddonSpecialPerils, AddonNamedDriver, AddonTotalLoss, AddonEvCharger,
+     TotalAddonAmount, StampDutyAmount, ServiceTaxAmount, AgentCommission, NetPremiumPayable)
+VALUES
+-- #1: Gross 1200, NCD 55% -> Net 540, addons 130 -> SST 53.60 -> Total 733.60
+(1,  45000.00, 1200.00, 660.00,  540.00,  50.00, 80.00,  0.00, 0.00,   0.00, 130.00, 10.00,  53.60, 60.00,  733.60),
+
+-- #2: Gross 1100, NCD 38.33% -> Net 678.37, addons 80 -> SST 60.67 -> Total 829.04
+(2,  42000.00, 1100.00, 421.63,  678.37,  50.00,  0.00, 30.00, 0.00,   0.00,  80.00, 10.00,  60.67, 55.00,  829.04),
+
+-- #3: Gross 1450, NCD 25% -> Net 1087.50, addons 160 -> SST 99.80 -> Total 1357.30
+(3,  55000.00, 1450.00, 362.50, 1087.50,  60.00, 100.00, 0.00, 0.00,   0.00, 160.00, 10.00,  99.80, 72.50,  1357.30),
+
+-- #4: Gross 180, NCD 0% -> Net 180, addons 0 -> SST 14.40 -> Total 204.40
+(4,   6500.00,  180.00,   0.00,  180.00,   0.00,  0.00,  0.00, 0.00,   0.00,   0.00, 10.00,  14.40,  9.00,  204.40),
+
+-- #5: Gross 2400, NCD 30% -> Net 1680, addons 280 -> SST 156.80 -> Total 2126.80
+(5,  95000.00, 2400.00, 720.00, 1680.00,  80.00, 150.00, 50.00, 0.00,   0.00, 280.00, 10.00, 156.80, 120.00, 2126.80),
+
+-- #6: Group policy — Gross 900, NCD 0% -> Net 900, addons 0 -> SST 72.00 -> Total 982.00
+(6,  30000.00,  900.00,   0.00,  900.00,   0.00,  0.00,  0.00, 0.00,   0.00,   0.00, 10.00,  72.00, 45.00,  982.00),
+
+-- #7 (Expired): Gross 1900, NCD 45% -> Net 1045, addons 60 -> SST 88.40 -> Total 1203.40
+(7,  80000.00, 1900.00, 855.00, 1045.00,  60.00,  0.00,  0.00, 0.00,   0.00,  60.00, 10.00,  88.40, 95.00,  1203.40),
+
+-- #8: PA flat — Gross 350, NCD 0% -> Net 350, addons 0 -> SST 28.00 -> Total 388.00
+(8, 100000.00,  350.00,   0.00,  350.00,   0.00,  0.00,  0.00, 0.00,   0.00,   0.00, 10.00,  28.00, 17.50,  388.00),
+
+-- #9 (EV): Gross 4200, NCD 25% -> Net 3150, addons 450 (incl. EV Charger 150) -> SST 288.00 -> Total 3898.00
+(9, 180000.00, 4200.00, 1050.00, 3150.00, 100.00, 200.00,  0.00, 0.00, 150.00, 450.00, 10.00, 288.00, 210.00, 3898.00),
+
+-- #10: Gross 850, NCD 0% -> Net 850, addons 0 -> SST 68.00 -> Total 928.00
+(10,600000.00,  850.00,   0.00,  850.00,   0.00,  0.00,  0.00, 0.00,   0.00,   0.00, 10.00,  68.00, 42.50,  928.00),
+
+-- #11: Gross 2100, NCD 38.33% -> Net 1295.07, addons 190 -> SST 118.81 -> Total 1613.88
+(11, 70000.00, 2100.00, 804.93, 1295.07,  70.00, 120.00,  0.00, 0.00,   0.00, 190.00, 10.00, 118.81, 105.00, 1613.88),
+
+-- #12 (Expired prior policy): Gross 1250, NCD 45% -> Net 687.50, addons 130 -> SST 65.40 -> Total 892.90
+(12, 45000.00, 1250.00, 562.50,  687.50,  50.00, 80.00,  0.00, 0.00,   0.00, 130.00, 10.00,  65.40, 62.50,  892.90),
+
+-- #13: Travel — Gross 120, NCD 0% -> Net 120, addons 0 -> SST 9.60 -> Total 139.60
+(13, 50000.00,  120.00,   0.00,  120.00,   0.00,  0.00,  0.00, 0.00,   0.00,   0.00, 10.00,   9.60,  6.00,  139.60);
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 12 — POLICY GROUP EMPLOYEES (3 workers under FWHS policy #6)
+-- ═══════════════════════════════════════════════════════════════════════
+SET IDENTITY_INSERT PolicyGroupEmployees ON;
+
+INSERT INTO PolicyGroupEmployees (EmployeeLinkId, PolicyId, EmployeeName, PassportOrNric, Gender, NationalityCode, DateOfBirth, Occupation, AnnualWage, IsActive) VALUES
+(1, 6, 'MD. RAFIQUL ISLAM',   'BP0445566', 'M', 'BGD', '1995-04-12', 'Production Operator', 28800.00, 1),
+(2, 6, 'SUNITA KUMARI THAPA', 'NP1122334', 'F', 'NPL', '1998-07-20', 'Packing Assistant',    26400.00, 1),
+(3, 6, 'BAMBANG SETIAWAN',    'IDN998877', 'M', 'IDN', '1993-11-05', 'Machine Operator',     30000.00, 1);
+
+SET IDENTITY_INSERT PolicyGroupEmployees OFF;
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 13 — CUSTOMER PAYMENT LEDGERS
+-- Mix of: fully paid, partially paid (deposit), and unpaid (none recorded)
+-- to support the "Outstanding Balances" report.
+--   #1  fully paid     | #2 fully paid | #3 fully paid | #4 fully paid
+--   #5  PARTIAL (deposit only — outstanding balance demo)
+--   #6  fully paid     | #8 fully paid | #9 fully paid | #10 fully paid | #11 fully paid
+--   #7  UNPAID (expired, no payment)    | #12 fully paid (historical)  | #13 UNPAID
+-- ═══════════════════════════════════════════════════════════════════════
+SET IDENTITY_INSERT CustomerPaymentLedgers ON;
+
+INSERT INTO CustomerPaymentLedgers (PaymentId, ClientId, PolicyId, PaymentDate, PaymentMethod, AmountPaid, BankOrIssueName, ReferenceNumber, IsClearedAndSettled, ReceiptNumber, Remarks, RecordedBy, CreatedAt) VALUES
+(1,  1, 1,  DATEADD(DAY, -347, GETUTCDATE()), 'FPX',       733.60,  'Maybank',     'FPX-REF-100001', 1, 'RCT-2025-00001', NULL, 'siti.aminah',  DATEADD(DAY, -347, GETUTCDATE())),
+(2,  2, 2,  DATEADD(DAY, -320, GETUTCDATE()), 'DuitNowQR', 829.04,  NULL,          'QR-REF-100002',  1, 'RCT-2025-00002', NULL, 'kumaresan',    DATEADD(DAY, -320, GETUTCDATE())),
+(3,  3, 3,  DATEADD(DAY, -290, GETUTCDATE()), 'Cash',      1357.30, NULL,          NULL,             1, 'RCT-2025-00003', NULL, 'kumaresan',    DATEADD(DAY, -290, GETUTCDATE())),
+(4,  4, 4,  DATEADD(DAY, -265, GETUTCDATE()), 'Cheque',    204.40,  'CIMB',        'CHQ-100004',     1, 'RCT-2025-00004', NULL, 'siti.aminah',  DATEADD(DAY, -265, GETUTCDATE())),
+
+-- #5: deposit only — RM 1000 of RM 2126.80 paid, balance outstanding
+(5,  5, 5,  DATEADD(DAY, -356, GETUTCDATE()), 'Cash',      1000.00, NULL,          NULL,             1, 'RCT-2025-00005', 'Deposit only — balance due on collection of cover note', 'vincent.tan', DATEADD(DAY, -356, GETUTCDATE())),
+
+(6,  6, 6,  DATEADD(DAY, -160, GETUTCDATE()), 'FPX',       982.00,  'Public Bank', 'FPX-REF-100006', 1, 'RCT-2025-00006', NULL, 'kumaresan',    DATEADD(DAY, -160, GETUTCDATE())),
+(7,  8, 8,  DATEADD(DAY, -210, GETUTCDATE()), 'FPX',       388.00,  'Maybank',     'FPX-REF-100007', 1, 'RCT-2025-00007', NULL, 'farah.diyana', DATEADD(DAY, -210, GETUTCDATE())),
+(8,  1, 9,  DATEADD(DAY, -300, GETUTCDATE()), 'CreditCard',3898.00, NULL,          'CC-AUTH-100008', 1, 'RCT-2025-00008', NULL, 'vincent.tan',  DATEADD(DAY, -300, GETUTCDATE())),
+(9,  2, 10, DATEADD(DAY, -110, GETUTCDATE()), 'FPX',       928.00,  'Hong Leong',  'FPX-REF-100009', 1, 'RCT-2025-00009', NULL, 'siti.aminah',  DATEADD(DAY, -110, GETUTCDATE())),
+(10, 3, 11, DATEADD(DAY, -355, GETUTCDATE()), 'Cash',      1613.88, NULL,          NULL,             1, 'RCT-2025-00010', NULL, 'kumaresan',    DATEADD(DAY, -355, GETUTCDATE())),
+(11, 1, 12, DATEADD(DAY, -700, GETUTCDATE()), 'Cheque',    892.90,  'Maybank',     'CHQ-100011',     1, 'RCT-2024-00011', 'Prior-year policy — historical record', 'vincent.tan', DATEADD(DAY, -700, GETUTCDATE()));
+
+SET IDENTITY_INSERT CustomerPaymentLedgers OFF;
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 14 — RENEWAL NOTICES (WhatsApp simulator history)
+-- ═══════════════════════════════════════════════════════════════════════
+SET IDENTITY_INSERT RenewalNotices ON;
+
+INSERT INTO RenewalNotices (NoticeId, PolicyId, NoticeType, SentAt, Channel, PhoneOrEmail, MessageContent, IsDelivered, DeliveredAt, AgentNote) VALUES
+(1, 5,  '30Day', DATEADD(DAY, -2, GETUTCDATE()), 'WhatsApp', '013-7778899',
+   'Dear FATIMAH BINTI HASSAN, your policy CN-2025-10005 for JHH5678 expires on ' + CONVERT(varchar(10), DATEADD(DAY, 9, GETUTCDATE()), 103) + '. Please contact us to renew. Agent: Vincent Tan Tel: 012-3456002',
+   1, DATEADD(DAY, -2, GETUTCDATE()), 'Client acknowledged, will visit office this week'),
+
+(2, 11, '7Day', DATEADD(DAY, -1, GETUTCDATE()), 'WhatsApp', '016-5551234',
+   'Dear LIM SIEW LING, your policy CN-2025-10011 for WA2298 expires on ' + CONVERT(varchar(10), DATEADD(DAY, 5, GETUTCDATE()), 103) + '. Please contact us to renew. Agent: Kumaresan A/L Murthy Tel: 012-3456004',
+   1, DATEADD(DAY, -1, GETUTCDATE()), NULL),
+
+(3, 11, '30Day', DATEADD(DAY, -25, GETUTCDATE()), 'WhatsApp', '016-5551234',
+   'Dear LIM SIEW LING, your policy CN-2025-10011 for WA2298 expires soon. Please contact us to renew. Agent: Kumaresan A/L Murthy Tel: 012-3456004',
+   1, DATEADD(DAY, -25, GETUTCDATE()), NULL),
+
+(4, 7, '30Day', DATEADD(DAY, -42, GETUTCDATE()), 'Email', 'hafiz.zakaria@gmail.com',
+   'Dear MOHD HAFIZ BIN ZAKARIA, your policy CN-2025-10007 for QSJ3344 expired/expires soon. A renewal quote (CN-2026-10014) has been prepared for your review.',
+   1, DATEADD(DAY, -42, GETUTCDATE()), 'Sent renewal quote — awaiting confirmation');
+
+SET IDENTITY_INSERT RenewalNotices OFF;
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 15 — CLAIMS (3: in-progress, approved, closed)
+-- ═══════════════════════════════════════════════════════════════════════
+SET IDENTITY_INSERT Claims ON;
+
+INSERT INTO Claims (ClaimId, PolicyId, ClaimReferenceNumber, InsurerClaimNumber, ClaimDate, ReportedDate, ClaimType, ClaimStatus, EstimatedLossAmount, ApprovedClaimAmount, ClaimNarrative, WorkshopName, CloseDate, Remarks, CreatedAt, CreatedBy, UpdatedBy, UpdatedAt) VALUES
+
+-- Claim 1: still in progress (policy #3 — Honda City)
+(1, 3, 'CLM-2026-00001', 'ETQ-CLM-55421', DATEADD(DAY, -15, GETUTCDATE()), DATEADD(DAY, -14, GETUTCDATE()),
+    'OwnDamage', 'InProgress', 4500.00, NULL,
+    'Front bumper and headlamp damaged after reversing into a concrete pillar at a shopping mall car park.',
+    'Auto Bavaria Body & Paint, Penang', NULL,
+    'Awaiting workshop estimate approval from insurer', DATEADD(DAY, -14, GETUTCDATE()), 'kumaresan', NULL, NULL),
+
+-- Claim 2: approved (policy #9 — Tesla EV)
+(2, 9, 'CLM-2026-00002', 'ALZ-CLM-88934', DATEADD(DAY, -60, GETUTCDATE()), DATEADD(DAY, -58, GETUTCDATE()),
+    'ThirdParty', 'Approved', 12000.00, 11500.00,
+    'Rear-ended at a traffic light by a third-party vehicle. Third party admitted fault.',
+    'Tesla Approved Body Shop, Shah Alam', DATEADD(DAY, -10, GETUTCDATE()),
+    'Approved claim amount RM11,500 — repair completed', DATEADD(DAY, -58, GETUTCDATE()), 'vincent.tan', 'vincent.tan', DATEADD(DAY, -10, GETUTCDATE())),
+
+-- Claim 3: closed (policy #7 — expired policy, claim made before expiry)
+(3, 7, 'CLM-2025-00098', 'ZUR-CLM-77210', DATEADD(DAY, -90, GETUTCDATE()), DATEADD(DAY, -88, GETUTCDATE()),
+    'Theft', 'Closed', 8000.00, 7200.00,
+    'Side mirrors and infotainment unit stolen overnight while parked outside residence. Police report lodged.',
+    NULL, DATEADD(DAY, -55, GETUTCDATE()),
+    'Settled and closed prior to policy expiry', DATEADD(DAY, -88, GETUTCDATE()), 'siti.aminah', 'siti.aminah', DATEADD(DAY, -55, GETUTCDATE()));
+
+SET IDENTITY_INSERT Claims OFF;
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 16 — CLAIM DOCUMENTS (checklist for Claim #1, in progress)
+-- ═══════════════════════════════════════════════════════════════════════
+SET IDENTITY_INSERT ClaimDocuments ON;
+
+INSERT INTO ClaimDocuments (DocumentId, ClaimId, DocumentName, DocumentCategory, IsReceived, ReceivedDate, StoragePath, OriginalFileName, UploadedBy, UploadedAt) VALUES
+(1, 1, 'Workshop Repair Estimate', 'Workshop',       1, DATEADD(DAY, -12, GETUTCDATE()), '/uploads/claims/1/estimate.pdf',   'estimate_bavaria.pdf', 'kumaresan', DATEADD(DAY, -12, GETUTCDATE())),
+(2, 1, 'Damage Photos',            'Photo',          1, DATEADD(DAY, -14, GETUTCDATE()), '/uploads/claims/1/photos.zip',     'damage_photos.zip',    'kumaresan', DATEADD(DAY, -14, GETUTCDATE())),
+(3, 1, 'Insurer Approval Letter',  'Correspondence', 0, NULL, NULL, NULL, NULL, NULL);
+
+SET IDENTITY_INSERT ClaimDocuments OFF;
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 17 — LHDN E-INVOICE RECORDS (Feature 7 demo)
+--   #1  Valid    | #2 Valid | #9 Pending
+-- ═══════════════════════════════════════════════════════════════════════
+INSERT INTO LhdnEInvoiceRecords (PolicyId, LhdnUniqueId, InternalInvoiceNumber, TransmittedAt, ValidationStatus, IrbmErrorMessage) VALUES
+(1, 'LHDN-UUID-A1B2C3D4-0001', 'INV-2025-00001', DATEADD(DAY, -346, GETUTCDATE()), 'Valid', NULL),
+(2, 'LHDN-UUID-A1B2C3D4-0002', 'INV-2025-00002', DATEADD(DAY, -319, GETUTCDATE()), 'Valid', NULL),
+(9, NULL,                       'INV-2025-00009', DATEADD(DAY, -1, GETUTCDATE()),   'Pending', NULL);
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 18 — AUDIT SESSION LOGS (placeholder login history)
+-- UserId values here are PLACEHOLDERS — once real AspNetUsers accounts
+-- exist (Step 1.5/1.7), new logins will write real Identity GUIDs via
+-- AuthController.WriteAuditLogAsync. These rows are just for the
+-- Security > Session Audit Log page to show some history immediately.
+-- ═══════════════════════════════════════════════════════════════════════
+SET IDENTITY_INSERT AuditSessionLogs ON;
+
+INSERT INTO AuditSessionLogs (SessionId, UserId, Username, IpAddress, UserAgent, LoginTime, LogoutTime, IsActive, LogoutReason) VALUES
+(1, 'SEED-PLACEHOLDER-ADMIN', 'admin',        '192.168.1.10', 'Mozilla/5.0 (Seed Data)', DATEADD(HOUR, -26, GETUTCDATE()), DATEADD(HOUR, -24, GETUTCDATE()), 0, 'UserLogout'),
+(2, 'SEED-PLACEHOLDER-AGENT', 'siti.aminah',  '192.168.1.22', 'Mozilla/5.0 (Seed Data)', DATEADD(HOUR, -3, GETUTCDATE()),  NULL, 1, NULL);
+
+SET IDENTITY_INSERT AuditSessionLogs OFF;
+
+
+COMMIT TRANSACTION;
+
+PRINT '✅ IMS Agency seed data inserted successfully.';
+PRINT '   - 8 Clients, 8 Vehicles, 15 Policies (Active/Expired/Cancelled/Quoted)';
+PRINT '   - Renewal pipeline: 5 policies expiring within 100 days (incl. 2 urgent <10 days)';
+PRINT '   - 11 payments, 4 renewal notices, 3 claims, 1 EV policy, 3 group employees';
+GO
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- VERIFICATION QUERIES — run these to sanity-check the Dashboard KPIs
+-- ═══════════════════════════════════════════════════════════════════════
+
+-- Policy status breakdown (KPI cards)
+SELECT PolicyStatus, COUNT(*) AS PolicyCount, SUM(SumInsured) AS TotalSumInsured
+FROM Policies
+GROUP BY PolicyStatus
+ORDER BY PolicyStatus;
+
+-- Renewal pipeline (Due 30/60/90 days)
+SELECT
+    PolicyId, CoverNoteNumber, ExpiryDate,
+    DATEDIFF(DAY, GETUTCDATE(), ExpiryDate) AS DaysToExpiry,
+    CASE
+        WHEN DATEDIFF(DAY, GETUTCDATE(), ExpiryDate) <= 30 THEN 'Due 30 Days'
+        WHEN DATEDIFF(DAY, GETUTCDATE(), ExpiryDate) <= 60 THEN 'Due 60 Days'
+        WHEN DATEDIFF(DAY, GETUTCDATE(), ExpiryDate) <= 90 THEN 'Due 90 Days'
+        ELSE 'Not Due Yet'
+    END AS RenewalBucket
+FROM Policies
+WHERE PolicyStatus = 'Active'
+ORDER BY ExpiryDate;
+
+-- Total premium collected (Financial KPI)
+SELECT SUM(AmountPaid) AS TotalCollected,
+       SUM(CASE WHEN IsClearedAndSettled = 0 THEN AmountPaid ELSE 0 END) AS PendingClearance
+FROM CustomerPaymentLedgers;
+
+-- Outstanding balances (NetPremiumPayable vs AmountPaid)
+SELECT
+    p.PolicyId, p.CoverNoteNumber, pl.NetPremiumPayable,
+    ISNULL(pay.TotalPaid, 0) AS TotalPaid,
+    pl.NetPremiumPayable - ISNULL(pay.TotalPaid, 0) AS OutstandingBalance
+FROM Policies p
+JOIN PremiumLedgers pl ON pl.PolicyId = p.PolicyId
+LEFT JOIN (
+    SELECT PolicyId, SUM(AmountPaid) AS TotalPaid
+    FROM CustomerPaymentLedgers
+    GROUP BY PolicyId
+) pay ON pay.PolicyId = p.PolicyId
+WHERE pl.NetPremiumPayable - ISNULL(pay.TotalPaid, 0) > 0;
+
+-- Claims summary
+SELECT ClaimStatus, COUNT(*) AS ClaimCount, SUM(ISNULL(ApprovedClaimAmount, EstimatedLossAmount)) AS TotalExposure
+FROM Claims
+GROUP BY ClaimStatus;

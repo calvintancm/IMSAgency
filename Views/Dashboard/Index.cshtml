@@ -1,0 +1,339 @@
+﻿@model ImsAgency.Web.Models.ViewModels.DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+    ViewData["BreadcrumbSection"] = "Main";
+    ViewData["BreadcrumbPage"] = "Dashboard";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">Welcome to IMS Agency — Renew Smarter. Serve Better.</p>
+    </div>
+</div>
+
+<!-- ================================================================
+     TOP STAT CARDS
+================================================================ -->
+<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px;">
+    <div class="stat-card">
+        <div class="stat-label"><i class="bi bi-file-earmark-check"></i> Active Policies</div>
+        <div class="stat-value">@Model.TotalActivePolicies</div>
+    </div>
+    <div class="stat-card stat-accent">
+        <div class="stat-label"><i class="bi bi-people"></i> Total Clients</div>
+        <div class="stat-value">@Model.TotalClients</div>
+    </div>
+    <div class="stat-card stat-accent">
+        <div class="stat-label"><i class="bi bi-cash-stack"></i> Premium Collected</div>
+        <div class="stat-value">RM @Model.TotalPremiumCollected.ToString("N2")</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-label"><i class="bi bi-file-earmark-medical"></i> Pending Claims</div>
+        <div class="stat-value">@Model.PendingClaimsCount</div>
+    </div>
+</div>
+
+<!-- ================================================================
+     RENEWAL PIPELINE STRIP (Feature 1)
+================================================================ -->
+<div style="display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:18px;">
+    <div class="stat-card stat-danger">
+        <div class="stat-label">Due in 7 Days</div>
+        <div class="stat-value">@Model.ExpiringIn7Days</div>
+    </div>
+    <div class="stat-card stat-danger">
+        <div class="stat-label">Due in 30 Days</div>
+        <div class="stat-value">@Model.ExpiringIn30Days</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-label">Due in 60 Days</div>
+        <div class="stat-value">@Model.ExpiringIn60Days</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-label">Due in 90 Days</div>
+        <div class="stat-value">@Model.ExpiringIn90Days</div>
+    </div>
+    <div class="stat-card stat-danger">
+        <div class="stat-label">Expired</div>
+        <div class="stat-value">@Model.ExpiredCount</div>
+    </div>
+</div>
+
+<!-- ================================================================
+     CHARTS ROW — Policy Status Donut + Motor/Non-Motor Donut
+================================================================ -->
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px;">
+
+    <div class="ptc-card">
+        <div class="ptc-card-header">
+            <h2 class="ptc-card-title">Policy Status Breakdown</h2>
+        </div>
+        <div class="ptc-card-body" style="display:flex; align-items:center; gap:24px;">
+            <canvas id="statusDonut" width="160" height="160"></canvas>
+            <div id="statusLegend" style="flex:1;"></div>
+        </div>
+    </div>
+
+    <div class="ptc-card">
+        <div class="ptc-card-header">
+            <h2 class="ptc-card-title">Motor vs Non-Motor Policies</h2>
+        </div>
+        <div class="ptc-card-body" style="display:flex; align-items:center; gap:24px;">
+            <canvas id="classDonut" width="160" height="160"></canvas>
+            <div id="classLegend" style="flex:1;"></div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ================================================================
+     OUTSTANDING BALANCE BANNER
+================================================================ -->
+@if (Model.TotalOutstandingBalance > 0)
+{
+    <div class="alert alert-warning d-flex align-items-center justify-content-between mb-3">
+        <div>
+            <i class="bi bi-exclamation-circle-fill"></i>
+            Total outstanding premium across all policies:
+            <strong>RM @Model.TotalOutstandingBalance.ToString("N2")</strong>
+        </div>
+        <a asp-controller="FinancialReport" asp-action="OutstandingPremium" class="btn-ptc-outline">
+            View Details
+        </a>
+    </div>
+}
+
+<!-- ================================================================
+     RENEWAL PIPELINE TABLE (Feature 1 — countdown rings)
+================================================================ -->
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Upcoming Renewals (Next 90 Days)</h2>
+        <span class="record-count-badge">@Model.UpcomingRenewals.Count records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        @if (!Model.UpcomingRenewals.Any())
+        {
+            <div class="p-4 text-center text-muted">No policies expiring within 90 days. 🎉</div>
+        }
+        else
+        {
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:70px;"></th>
+                        <th>Cover Note</th>
+                        <th>Client</th>
+                        <th>Vehicle / Type</th>
+                        <th>Expiry Date</th>
+                        <th>Days Left</th>
+                        <th style="width:160px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.UpcomingRenewals)
+                    {
+                        // Feature 1 color rule: Green > 90, Amber 30-90, Red < 30
+                        var ringColor = item.DaysToExpiry < 30 ? "#dc2626"
+                        : item.DaysToExpiry <= 90 ? "#d97706"
+                        : "#16a34a";
+                        <tr>
+                            <td>
+                                <canvas class="renewal-ring" width="48" height="48"
+                                        data-days="@item.DaysToExpiry" data-color="@ringColor"></canvas>
+                            </td>
+                            <td><strong>@item.CoverNoteNumber</strong></td>
+                            <td>@item.ClientName</td>
+                            <td>
+                                @(item.RegistrationNumber ?? item.PolicyClassName)
+                            </td>
+                            <td>@item.ExpiryDate.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                <span class="badge-status" style="background:@(ringColor)1A; color:@ringColor;">
+                                    @item.DaysToExpiry day@(item.DaysToExpiry == 1 ? "" : "s")
+                                </span>
+                            </td>
+                            <td>
+                                <button type="button" class="btn-ptc-outline btn-sm send-reminder-btn"
+                                        data-policy-id="@item.PolicyId"
+                                        data-client-name="@item.ClientName"
+                                        data-cover-note="@item.CoverNoteNumber">
+                                    <i class="bi bi-whatsapp"></i> Send Reminder
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // ================================================================
+        // CANVAS DONUT CHART HELPER
+        // Draws a simple donut chart from an array of { label, value, color }
+        // ================================================================
+        function drawDonut(canvasId, slices) {
+            var canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            var ctx = canvas.getContext('2d');
+            var cx = canvas.width / 2;
+            var cy = canvas.height / 2;
+            var radius = Math.min(cx, cy) - 6;
+            var innerRadius = radius * 0.62;
+
+            var total = slices.reduce(function (sum, s) { return sum + s.value; }, 0);
+            if (total === 0) {
+                ctx.font = '13px Segoe UI';
+                ctx.fillStyle = '#9ca3af';
+                ctx.textAlign = 'center';
+                ctx.fillText('No data', cx, cy);
+                return;
+            }
+
+            var startAngle = -Math.PI / 2;
+            slices.forEach(function (slice) {
+                var sliceAngle = (slice.value / total) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, radius, startAngle, startAngle + sliceAngle);
+                ctx.closePath();
+                ctx.fillStyle = slice.color;
+                ctx.fill();
+                startAngle += sliceAngle;
+            });
+
+            // Cut out the center to make it a donut
+            ctx.beginPath();
+            ctx.arc(cx, cy, innerRadius, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+
+            // Center text = total count
+            ctx.font = 'bold 20px Segoe UI';
+            ctx.fillStyle = '#1f2937';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(total, cx, cy - 6);
+            ctx.font = '11px Segoe UI';
+            ctx.fillStyle = '#6b7280';
+            ctx.fillText('Total', cx, cy + 12);
+        }
+
+        function buildLegend(containerId, slices) {
+            var container = document.getElementById(containerId);
+            if (!container) return;
+            var html = '';
+            slices.forEach(function (slice) {
+                html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px;">' +
+                    '<span style="width:10px;height:10px;border-radius:50%;background:' + slice.color + ';display:inline-block;"></span>' +
+                    '<span style="flex:1;">' + slice.label + '</span>' +
+                    '<strong>' + slice.value + '</strong>' +
+                    '</div>';
+            });
+            container.innerHTML = html || '<span class="text-muted">No data</span>';
+        }
+
+        // ---- Policy Status colors (matches badge-status classes) ----
+        var statusColorMap = {
+            'Active':    '#16a34a',
+            'Expired':   '#dc2626',
+            'Quoted':    '#d97706',
+            'Draft':     '#d97706',
+            'Lapsed':    '#94a3b8',
+            'Cancelled': '#64748b'
+        };
+
+        var statusSlices = [
+            @foreach (var s in Model.PolicyStatusBreakdown)
+            {
+                    @:{ label: '@s.Status', value: @s.Count, color: statusColorMap['@s.Status'] || '#0d6fa4' },
+            }
+        ];
+        drawDonut('statusDonut', statusSlices);
+        buildLegend('statusLegend', statusSlices);
+
+           <script>
+        // ---- Motor vs Non-Motor colors ----
+        var classColorMap = {
+            'Motor':    '#0d6fa4',
+            'NonMotor': '#16a34a'
+        };
+        var classLabelMap = {
+            'Motor':    'Motor Policies',
+            'NonMotor': 'Non-Motor Policies'
+        };
+
+        var classSlices = [
+            @foreach (var c in Model.PolicyClassBreakdown)
+            {
+                    @:{ label: classLabelMap['@c.ClassCategory'] || '@c.ClassCategory', value: @c.Count, color: classColorMap['@c.ClassCategory'] || '#94a3b8' },
+            }
+        ];
+        drawDonut('classDonut', classSlices);
+        buildLegend('classLegend', classSlices);
+
+        // ================================================================
+        // RENEWAL COUNTDOWN RINGS
+        // Each ring shows progress toward 90 days (full circle = 90+ days left)
+        // ================================================================
+        document.querySelectorAll('.renewal-ring').forEach(function (canvas) {
+            var ctx = canvas.getContext('2d');
+            var days = parseInt(canvas.getAttribute('data-days'), 10);
+            var color = canvas.getAttribute('data-color');
+            var cx = canvas.width / 2;
+            var cy = canvas.height / 2;
+            var radius = cx - 4;
+
+            // Progress = how much of the 90-day window has ELAPSED
+            // (closer to expiry = more of the ring filled in the warning color)
+            var fraction = Math.max(0, Math.min(1, (90 - days) / 90));
+
+            // Background track
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 5;
+            ctx.stroke();
+
+            // Progress arc
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, -Math.PI / 2, -Math.PI / 2 + (fraction * Math.PI * 2));
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            // Center text = days left
+            ctx.font = 'bold 13px Segoe UI';
+            ctx.fillStyle = '#1f2937';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(days, cx, cy);
+        });
+
+        // ================================================================
+        // WHATSAPP REMINDER SIMULATOR (Feature 6) — preview only for now.
+        // Full send-and-log functionality wired to RenewalNotices
+        // comes in Step 6.3.
+        // ================================================================
+        document.querySelectorAll('.send-reminder-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var clientName = btn.getAttribute('data-client-name');
+                var coverNote = btn.getAttribute('data-cover-note');
+
+                var message = 'Dear ' + clientName + ', your policy ' + coverNote +
+                    ' is expiring soon. Please contact us to renew. — IMS Agency';
+
+                KSwal.confirm(message, 'Send WhatsApp Reminder?').then(function (result) {
+                    if (result.isConfirmed) {
+                        KSwal.success('Reminder preview shown. Full send + logging available in Renewal Pipeline module (Phase 6).');
+                    }
+                });
+            });
+        });
+    </script>
+}

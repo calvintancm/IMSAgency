@@ -1,0 +1,428 @@
+@* 
+   _Layout.cshtml  — PTC IGH System Master Layout
+   ── Dialog functions ─────
+   KSwal.*         → SweetAlert2 popups (sweetalert-kendo.js)
+   PTC.kendoAlert  → Raw Kendo Window (optional, still works)
+   ── UI functions ────
+   PTC.toggleSidebar / PTC.closeMobileSidebar / PTC.toggleFullscreen
+   PTC.confirmLogout
+ *@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <title>@ViewData["Title"] — PTC IGH System</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" />
+
+    @* cmtan Kendo 2019.1.220 — local CSS *@
+   @*  <link rel="stylesheet" href="~/lib/kendo/2019.1.220/styles/kendo.common.min.css" />
+    <link rel="stylesheet" href="~/lib/kendo/2019.1.220/styles/kendo.default.min.css" />
+    <script src="~/lib/kendo/2019.1.220/kendo.all.min.js"></script> *@
+   
+
+  
+    <link rel="stylesheet" href="~/lib/kendo/2019.1.220/styles/kendo.common.min.css" />
+    <link rel="stylesheet" href="~/lib/kendo/2019.1.220/styles/kendo.default.min.css" />
+
+   
+    @* Kendo icon font — CDN fallback so icons load even without local font files *@
+    <style>
+        @@font-face {
+            font-family: "WebComponentsIcons";
+            src: url("https://kendo.cdn.telerik.com/2019.1.220/styles/fonts/glyphs/WebComponentsIcons.woff2") format("woff2"),
+                 url("https://kendo.cdn.telerik.com/2019.1.220/styles/fonts/glyphs/WebComponentsIcons.woff") format("woff"),
+                 url("https://kendo.cdn.telerik.com/2019.1.220/styles/fonts/glyphs/WebComponentsIcons.ttf") format("truetype");
+            font-weight: normal; font-style: normal;
+        }
+    </style>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.10.1/sweetalert2.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+
+    <style>
+        /* ══════════════════════════════════════════
+           CSS VARIABLES
+        ══════════════════════════════════════════ */
+        :root {
+            --sidebar-w:           265px;
+            --sidebar-w-collapsed: 66px;
+            --topbar-h:            58px;
+            --footer-h:            46px;
+
+            --sb-bg:          #2c4a6e;
+            --sb-bg-deep:     #243d5e;
+            --sb-bg-top:      #1f3652;
+            --sb-hover:       #3a5f8a;
+            --sb-active-bg:   rgba(255,255,255,0.14);
+            --sb-active-line: #7ec8f0;
+            --sb-border:      rgba(255,255,255,0.1);
+            --sb-text:        #ffffff;
+            --sb-text-active: #c8ddf0;
+            --sb-text-header: #90c4e8;
+
+            --topbar-bg:     #ffffff;
+            --topbar-border: #e2e8f0;
+            --topbar-shadow: 0 1px 6px rgba(0,0,0,0.07);
+
+            --content-bg:  #f0f4f9;
+            --card-bg:     #ffffff;
+            --card-shadow: 0 2px 14px rgba(0,0,0,0.055);
+            --card-radius: 12px;
+
+            --accent:    #1a6eb5;
+            --accent-lt: #3b96e8;
+            --gold:      #d97706;
+            --gold-lt:   #fbbf24;
+
+            --text-primary:   #1e293b;
+            --text-secondary: #475569;
+            --text-muted:     #94a3b8;
+
+            --clr-success: #059669;
+            --clr-warning: #d97706;
+            --clr-danger:  #dc2626;
+            --clr-info:    #0891b2;
+
+            --footer-bg:     #ffffff;
+            --footer-border: #e2e8f0;
+
+            --radius-sm: 8px;
+            --radius:    12px;
+            --radius-lg: 16px;
+            --transition: 0.22s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html, body {
+            height: 100%; font-family: 'DM Sans', sans-serif;
+            font-size: 14px; color: var(--text-primary);
+            background: var(--content-bg); overflow-x: hidden;
+        }
+
+        /* Main wrapper */
+        #main-wrapper {
+            margin-left: var(--sidebar-w); min-height: 100vh;
+            display: flex; flex-direction: column;
+            transition: margin-left var(--transition);
+        }
+
+        body.sidebar-collapsed #main-wrapper { margin-left: var(--sidebar-w-collapsed); }
+
+        #content-area { flex: 1; padding: 24px 24px 0; animation: fade-in 0.3s ease; }
+
+        @@keyframes fade-in {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Cards */
+        .ptc-card { background: var(--card-bg); border-radius: var(--card-radius); box-shadow: var(--card-shadow); border: 1px solid rgba(0,0,0,0.04); overflow: hidden; }
+        .ptc-card-header { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid #f1f5f9; }
+        .ptc-card-title  { font-family: 'Sora', sans-serif; font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 8px; }
+        .ptc-card-title i { color: var(--accent-lt); }
+        .ptc-card-body    { padding: 20px; }
+
+        /* Stat cards */
+        .stat-card { background: var(--card-bg); border-radius: var(--card-radius); padding: 20px 22px; box-shadow: var(--card-shadow); border: 1px solid rgba(0,0,0,0.04); display: flex; align-items: center; gap: 16px; position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.09); }
+        .stat-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; }
+        .stat-card.blue::after   { background: linear-gradient(90deg,#1a6eb5,#3b96e8); }
+        .stat-card.green::after  { background: linear-gradient(90deg,#059669,#34d399); }
+        .stat-card.orange::after { background: linear-gradient(90deg,#d97706,#fbbf24); }
+        .stat-card.red::after    { background: linear-gradient(90deg,#dc2626,#f87171); }
+        .stat-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+        .stat-icon.blue   { background: rgba(26,110,181,0.1);  color: var(--accent-lt); }
+        .stat-icon.green  { background: rgba(5,150,105,0.1);   color: #10b981; }
+        .stat-icon.orange { background: rgba(217,119,6,0.1);   color: var(--gold); }
+        .stat-icon.red    { background: rgba(220,38,38,0.1);   color: #ef4444; }
+        .stat-value    { font-family: 'Sora', sans-serif; font-size: 1.6rem; font-weight: 700; color: var(--text-primary); line-height: 1; margin-bottom: 4px; }
+        .stat-label    { font-size: 0.78rem; color: var(--text-muted); }
+        .stat-trend    { font-size: 0.72rem; font-weight: 600; display: flex; align-items: center; gap: 3px; margin-top: 5px; }
+        .stat-trend.up   { color: #10b981; }
+        .stat-trend.down { color: #ef4444; }
+        .stat-bg-icon  { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 64px; opacity: 0.05; }
+
+        /* Buttons */
+        .btn-ptc-primary { background: linear-gradient(135deg, var(--accent), var(--accent-lt)); color: #fff; border: none; padding: 8px 18px; border-radius: var(--radius-sm); font-size: 0.82rem; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: transform 0.18s, box-shadow 0.18s; display: inline-flex; align-items: center; gap: 7px; text-decoration: none; }
+        .btn-ptc-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(26,110,181,0.35); color: #fff; }
+        .btn-ptc-outline { background: transparent; color: var(--accent-lt); border: 1px solid var(--accent-lt); padding: 8px 18px; border-radius: var(--radius-sm); font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.18s; display: inline-flex; align-items: center; gap: 7px; }
+        .btn-ptc-outline:hover { background: var(--accent-lt); color: #fff; }
+
+        /* Page header */
+        .page-header   { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 22px; gap: 16px; flex-wrap: wrap; }
+        .page-title    { font-family: 'Sora', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin: 0 0 4px; }
+        .page-subtitle { font-size: 0.82rem; color: var(--text-muted); margin: 0; }
+
+        /* Online dot */
+        .online-dot { width: 7px; height: 7px; border-radius: 50%; background: #10b981; display: inline-block; margin-right: 5px; animation: pulse-dot 2s infinite; }
+
+        @@keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:0.35; } }
+
+        /* Prevent Bootstrap focus ring on sidebar buttons and links */
+        #sidebar *:focus,
+        #sidebar *:focus-visible {
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Kendo */
+        .k-grid th {
+            background: #f8fafc !important;
+            font-weight: 600 !important;
+            font-size: 0.77rem !important;
+            color: var(--text-secondary) !important;
+        }
+
+        .k-grid td {
+            font-size: 0.82rem;
+        }
+
+        .k-grid tr:hover td {
+            background: #f0f7ff !important;
+        }
+
+        /* Mobile overlay */
+        #sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1039; backdrop-filter: blur(2px); }
+
+        /* Responsive */
+        @@media (max-width: 1024px) {
+            :root { --sidebar-w: 240px; }
+            #content-area { padding: 18px 18px 0; }
+            .stat-value { font-size: 1.4rem; }
+        }
+
+        @@media (max-width: 768px) {
+            #sidebar { transform: translateX(-100%); width: var(--sidebar-w) !important; }
+            body.mobile-open #sidebar         { transform: translateX(0); }
+            body.mobile-open #sidebar-overlay { display: block; }
+            #main-wrapper  { margin-left: 0 !important; }
+            #content-area  { padding: 16px 14px 0; }
+            .page-header   { flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+            .page-header > div:last-child { width: 100%; }
+            .page-header > div:last-child .btn-ptc-primary,
+            .page-header > div:last-child .btn-ptc-outline { flex: 1; justify-content: center; }
+            .page-title    { font-size: 1.15rem; }
+            .page-subtitle { font-size: 0.78rem; }
+            .stat-card     { padding: 16px; }
+            .stat-value    { font-size: 1.35rem; }
+            .stat-bg-icon  { display: none; }
+            body.mobile-open .sb-brand-text,
+            body.mobile-open .sb-nav-label,
+            body.mobile-open .sb-badge,
+            body.mobile-open .sb-chevron,
+            body.mobile-open .sb-section-title { opacity: 1 !important; width: auto !important; max-width: none !important; overflow: visible !important; }
+            body.mobile-open .sb-nav-link { justify-content: flex-start !important; padding: 10px 17px !important; }
+            body.mobile-open .sb-nav-icon { font-size: 15px !important; width: 22px !important; min-width: 22px !important; }
+            body.mobile-open .sb-submenu  { display: block !important; }
+        }
+
+        @@media (max-width: 576px) {
+            #content-area    { padding: 12px 10px 0; }
+            .page-title      { font-size: 1.05rem; }
+            .stat-card       { padding: 14px 16px; }
+            .stat-value      { font-size: 1.25rem; }
+            .stat-icon       { width: 42px; height: 42px; font-size: 18px; }
+            .ptc-card-header { padding: 12px 14px; flex-wrap: wrap; gap: 8px; }
+            .ptc-card-body   { padding: 14px; }
+            .btn-ptc-primary, .btn-ptc-outline { padding: 7px 14px; font-size: 0.8rem; }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar        { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track  { background: transparent; }
+        ::-webkit-scrollbar-thumb  { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar-overlay" onclick="PTC.closeMobileSidebar()"></div>
+
+    @await Html.PartialAsync("_Navigation")
+
+    <form id="logoutForm" method="post" asp-controller="Account" asp-action="Logout" style="display:none;">
+        @Html.AntiForgeryToken()
+    </form>
+
+    <div id="main-wrapper">
+        @await Html.PartialAsync("_Header")
+        @await Html.PartialAsync("_Flash")
+        <main id="content-area">
+            @RenderBody()
+        </main>
+        @await Html.PartialAsync("_Footer")
+    </div>
+
+    @* ── SCRIPTS — load order matters ── *@
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+  
+  
+
+    <script>
+    /* ═══════════════════════════════════════════════════════════
+       PTC — UI helpers only
+       ALL alerts/toasts/confirms → KSwal.* (from sweetalert-kendo.js)
+       Kendo native dialogs → PTC.kendoAlert / PTC.kendoConfirm
+    ═══════════════════════════════════════════════════════════ */
+    window.PTC = (function () {
+
+        /* ── Sidebar ── */
+        function toggleSidebar() {
+            if (window.innerWidth <= 768) {
+                document.body.classList.toggle('mobile-open');
+            } else {
+                document.body.classList.toggle('sidebar-collapsed');
+                localStorage.setItem('sidebarCollapsed',
+                    document.body.classList.contains('sidebar-collapsed'));
+            }
+        }
+
+        function closeMobileSidebar() {
+            document.body.classList.remove('mobile-open');
+        }
+
+        if (localStorage.getItem('sidebarCollapsed') === 'true' && window.innerWidth > 768) {
+            document.body.classList.add('sidebar-collapsed');
+        }
+
+        /* ── Fullscreen ── */
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+                $('#fsBtn i').removeClass('bi-fullscreen').addClass('bi-fullscreen-exit');
+            } else {
+                document.exitFullscreen();
+                $('#fsBtn i').removeClass('bi-fullscreen-exit').addClass('bi-fullscreen');
+            }
+        }
+
+        /* ── Logout (uses KSwal) ── */
+        function confirmLogout() {
+            KSwal.confirm(
+                'Sign Out?',
+                'You will be signed out of the PTC IGH System.',
+                function () {
+                    KSwal.loading('Signing out...');
+                    setTimeout(function () {
+                        document.getElementById('logoutForm').submit();
+                    }, 600);
+                }
+            );
+        }
+
+        /* ── Kendo native Window alert ──
+           Use when you specifically want a Kendo Window style dialog.
+           For everything else use KSwal.*
+        ── */
+        function kendoAlert(title, message, icon) {
+            icon = icon || 'k-i-information';
+            var uid = 'kdlg_' + Date.now();
+            $('body').append(
+                '<div id="' + uid + '" style="padding:10px 0 6px;">'
+                + '<div style="display:flex;align-items:flex-start;gap:14px;">'
+                + '<span class="k-icon ' + icon + '" style="font-size:28px;flex-shrink:0;margin-top:2px;"></span>'
+                + '<div style="font-size:0.875rem;line-height:1.6;color:#334155;">' + message + '</div>'
+                + '</div></div>'
+            );
+            var dlg = $('#' + uid).kendoWindow({
+                title: title, modal: true, resizable: false,
+                draggable: true, width: '400px',
+                actions: ['close'],
+                close: function () { this.destroy(); }
+            }).data('kendoWindow');
+            dlg.element.after(
+                '<div style="padding:10px 16px 14px;text-align:right;background:#f8fafc;'
+                + 'border-top:1px solid #e2e8f0;border-radius:0 0 8px 8px;">'
+                + '<button class="k-button k-button-icontext" onclick="$(\'#' + uid + '\').data(\'kendoWindow\').close()">'
+                + '<span class="k-icon k-i-check"></span> OK</button></div>'
+            );
+            dlg.center().open();
+        }
+
+        /* ── Kendo native Window confirm ── */
+        function kendoConfirm(title, message, onConfirm) {
+            var uid = 'kconf_' + Date.now();
+            $('body').append(
+                '<div id="' + uid + '" style="padding:10px 0 6px;">'
+                + '<div style="display:flex;align-items:flex-start;gap:14px;">'
+                + '<span class="k-icon k-i-warning" style="font-size:28px;color:#d97706;flex-shrink:0;margin-top:2px;"></span>'
+                + '<div style="font-size:0.875rem;line-height:1.6;color:#334155;">' + message + '</div>'
+                + '</div></div>'
+            );
+            var dlg = $('#' + uid).kendoWindow({
+                title: title, modal: true, resizable: false,
+                draggable: false, width: '420px',
+                actions: [], close: function () { this.destroy(); }
+            }).data('kendoWindow');
+            dlg.element.after(
+                '<div style="padding:10px 16px 14px;background:#f8fafc;border-top:1px solid #e2e8f0;'
+                + 'border-radius:0 0 8px 8px;display:flex;justify-content:flex-end;gap:8px;">'
+                + '<button class="k-button" id="' + uid + '_no">Cancel</button>'
+                + '<button class="k-button k-primary" id="' + uid + '_yes">Confirm</button></div>'
+            );
+            dlg.center().open();
+            $(document)
+                .on('click', '#' + uid + '_no',  function () { dlg.close(); off(); })
+                .on('click', '#' + uid + '_yes', function () { dlg.close(); off(); if (typeof onConfirm === 'function') onConfirm(); });
+            function off() { $(document).off('click', '#' + uid + '_no, #' + uid + '_yes'); }
+        }
+
+        /* ── DOM ready ── */
+        $(function () {
+            var raw  = '@(User.Identity?.Name ?? "User")';
+            var name = raw.toUpperCase();
+            var init = name.length >= 2 ? name.substring(0, 2) : name;
+            $('.js-user-name').text(name);
+            $('.js-user-init').text(init);
+
+            var path = window.location.pathname.toLowerCase();
+            $('.sb-nav-link[href]').each(function () {
+                var href = ($(this).attr('href') || '').toLowerCase();
+                if (href !== '#' && href !== '/' && path.includes(href.split('/')[1] || '___')) {
+                    $(this).addClass('active');
+                    var sub = $(this).closest('.sb-submenu');
+                    if (sub.length) {
+                        sub.addClass('show');
+                        $('[data-bs-target="#' + sub.attr('id') + '"]').attr('aria-expanded', 'true');
+                    }
+                }
+            });
+
+            function tick() {
+                var now = new Date();
+                var d = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                var t = now.toLocaleTimeString('en-GB', { hour12: false });
+                $('#footerClock').text(d + '  ' + t);
+            }
+            tick();
+            setInterval(tick, 1000);
+        });
+
+        return {
+            toggleSidebar:      toggleSidebar,
+            closeMobileSidebar: closeMobileSidebar,
+            toggleFullscreen:   toggleFullscreen,
+            confirmLogout:      confirmLogout,
+            kendoAlert:         kendoAlert,
+            kendoConfirm:       kendoConfirm
+        };
+    })();
+    </script>
+
+    <script src="~/lib/kendo/2019.1.220/kendo.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.10.1/sweetalert2.all.min.js"></script>
+    <script src="~/js/sweetalert-kendo.js?v=@DateTime.Now.Ticks"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

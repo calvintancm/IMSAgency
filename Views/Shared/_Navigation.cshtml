@@ -1,0 +1,238 @@
+@{
+    var isAdmin = User.IsInRole("Admin");
+    var isSeniorAgent = User.IsInRole("Admin") || User.IsInRole("SeniorAgent");
+    var isAgent = User.IsInRole("Admin") || User.IsInRole("SeniorAgent") || User.IsInRole("Agent");
+    var isSupport = isAgent || User.IsInRole("Support");
+
+    string currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    string currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+
+    // Helper: returns "active" if the current controller+action matches
+    Func<string, string, string> isActive = (ctrl, act) =>
+        (currentController.Equals(ctrl, StringComparison.OrdinalIgnoreCase)
+         && currentAction.Equals(act, StringComparison.OrdinalIgnoreCase)) ? "active" : "";
+
+    // Helper: returns true if any action under this controller is active
+    // (used to auto-expand the right accordion section)
+    Func<string, bool> ctrlActive = (ctrl) =>
+        currentController.Equals(ctrl, StringComparison.OrdinalIgnoreCase);
+}
+
+<nav class="app-sidebar" id="appSidebar">
+
+    <div class="sidebar-brand">
+        <div class="icon-box"><i class="bi bi-shield-check"></i></div>
+        <div>
+            <div class="name">IMS Agency</div>
+            <div class="tagline">Renew Smarter. Serve Better.</div>
+        </div>
+    </div>
+
+    <!-- ===================== DASHBOARD ===================== -->
+    <div class="sidebar-section-label">Dashboard</div>
+    <a class="sidebar-link @isActive("Dashboard", "Index")" asp-controller="Dashboard" asp-action="Index">
+        <i class="bi bi-speedometer2"></i> Dashboard
+    </a>
+
+    <!-- ===================== CLIENTS ===================== -->
+    @if (isAgent)
+    {
+        <div class="sidebar-section-label">Clients</div>
+
+        <div class="sidebar-toggle" data-bs-toggle="collapse" data-bs-target="#menuClients"
+             aria-expanded="@(ctrlActive("Client") ? "true" : "false")">
+            <i class="bi bi-people menu-icon"></i> Clients
+            <i class="bi bi-chevron-right chevron"></i>
+        </div>
+        <div class="collapse sidebar-submenu @(ctrlActive("Client") ? "show" : "")" id="menuClients">
+            <a class="sidebar-link @isActive("Client", "AllClients")" asp-controller="Client" asp-action="AllClients">All Clients</a>
+            <a class="sidebar-link @isActive("Client", "AddClient")" asp-controller="Client" asp-action="AddClient">Add New Client</a>
+            @if (isSeniorAgent)
+            {
+                <a class="sidebar-link @isActive("Client", "Blacklisted")" asp-controller="Client" asp-action="Blacklisted">Blacklisted Clients</a>
+            }
+        </div>
+    }
+
+    <!-- ===================== MOTOR (VEHICLES) ===================== -->
+    @if (isAgent)
+    {
+        <div class="sidebar-section-label">Motor</div>
+
+        <div class="sidebar-toggle" data-bs-toggle="collapse" data-bs-target="#menuVehicles"
+             aria-expanded="@(ctrlActive("Vehicle") ? "true" : "false")">
+            <i class="bi bi-car-front menu-icon"></i> Vehicles
+            <i class="bi bi-chevron-right chevron"></i>
+        </div>
+        <div class="collapse sidebar-submenu @(ctrlActive("Vehicle") ? "show" : "")" id="menuVehicles">
+            <a class="sidebar-link @isActive("Vehicle", "AllVehicles")" asp-controller="Vehicle" asp-action="AllVehicles">Vehicle Registry</a>
+            <a class="sidebar-link @isActive("Vehicle", "AddVehicle")" asp-controller="Vehicle" asp-action="AddVehicle">Add Vehicle</a>
+        </div>
+    }
+
+    <!-- ===================== POLICY MANAGEMENT ===================== -->
+    @if (isAgent)
+    {
+        <div class="sidebar-section-label">Policy Management</div>
+
+        <div class="sidebar-toggle" data-bs-toggle="collapse" data-bs-target="#menuMotorPolicies"
+             aria-expanded="@(ctrlActive("Policy") ? "true" : "false")">
+            <i class="bi bi-file-earmark-text menu-icon"></i> Motor Policies
+            <i class="bi bi-chevron-right chevron"></i>
+        </div>
+        <div class="collapse sidebar-submenu @(ctrlActive("Policy") ? "show" : "")" id="menuMotorPolicies">
+            <a class="sidebar-link @isActive("Policy", "MotorPolicies")" asp-controller="Policy" asp-action="MotorPolicies">All Motor Policies</a>
+            <a class="sidebar-link @isActive("Policy", "NewMotorPolicy")" asp-controller="Policy" asp-action="NewMotorPolicy">New Motor Policy</a>
+            <a class="sidebar-link @isActive("Policy", "ExpiredMotor")" asp-controller="Policy" asp-action="ExpiredMotor">Expired Motor</a>
+        </div>
+
+        <div class="sidebar-toggle" data-bs-toggle="collapse" data-bs-target="#menuNonMotorPolicies"
+             aria-expanded="false">
+            <i class="bi bi-folder2-open menu-icon"></i> Non-Motor Policies
+            <i class="bi bi-chevron-right chevron"></i>
+        </div>
+        <div class="collapse sidebar-submenu" id="menuNonMotorPolicies">
+            <a class="sidebar-link @isActive("Policy", "NonMotorPolicies")" asp-controller="Policy" asp-action="NonMotorPolicies">All Non-Motor</a>
+            <a class="sidebar-link @isActive("Policy", "NewNonMotorPolicy")" asp-controller="Policy" asp-action="NewNonMotorPolicy">New Non-Motor Policy</a>
+            <a class="sidebar-link @isActive("Policy", "GroupMembers")" asp-controller="Policy" asp-action="GroupMembers">Group Members</a>
+        </div>
+    }
+
+    <!-- ===================== RENEWALS ===================== -->
+    @if (isSupport)
+    {
+        <div class="sidebar-section-label">Renewals</div>
+
+        <div class="sidebar-toggle" data-bs-toggle="collapse" data-bs-target="#menuRenewals"
+             aria-expanded="@(ctrlActive("Renewal") ? "true" : "false")">
+            <i class="bi bi-arrow-repeat menu-icon"></i> Renewal Pipeline
+            <i class="bi bi-chevron-right chevron"></i>
+        </div>
+        <div class="collapse sidebar-submenu @(ctrlActive("Renewal") ? "show" : "")" id="menuRenewals">
+            <a class="sidebar-link @isActive("Renewal", "AllRenewals")" asp-controller="Renewal" asp-action="AllRenewals">All Renewals</a>
+            <a class="sidebar-link @isActive("Renewal", "Due30")" asp-controller="Renewal" asp-action="Due30">Due in 30 Days</a>
+            <a class="sidebar-link @isActive("Renewal", "Due60")" asp-controller="Renewal" asp-action="Due60">Due in 60 Days</a>
+            <a class="sidebar-link @isActive("Renewal", "Due90")" asp-controller="Renewal" asp-action="Due90">Due in 90 Days</a>
+            <a class="sidebar-link @isActive("Renewal", "NoticesLog")" asp-controller="Renewal" asp-action="NoticesLog">Renewal Notices Log</a>
+        </div>
+    }
+
+    <!-- ===================== PAYMENTS ===================== -->
+    @if (isAgent)
+    {
+        <div class="sidebar-section-label">Payments</div>
+
+        <div class="sidebar-toggle" data-bs-toggle="collapse" data-bs-target="#menuPayments"
+             aria-expanded="@(ctrlActive("Payment") ? "true" : "false")">
+            <i class="bi bi-cash-coin menu-icon"></i> Payments
+            <i class="bi bi-chevron-right chevron"></i>
+        </div>
+        <div class="collapse sidebar-submenu @(ctrlActive("Payment") ? "show" : "")" id="menuPayments">
+            <a class="sidebar-link @isActive("Payment", "AllPayments")" asp-controller="Payment" asp-action="AllPayments">All Payments</a>
+            <a class="sidebar-link @isActive("Payment", "RecordPayment")" asp-controller="Payment" asp-action="RecordPayment">Record Payment</a>
+            @if (isSeniorAgent)
+            {
+                <a class="sidebar-link @isActive("Payment", "Outstanding")" asp-controller="Payment" asp-action="Outstanding">Outstanding Balances</a>
+            }
+        </div>
+    }
+
+    <!-- ===================== CLAIMS ===================== -->
+    @if (isSupport)
+    {
+        <div class="sidebar-section-label">Claims</div>
+
+        <div class="sidebar-toggle" data-bs-toggle="collapse" data-bs-target="#menuClaims"
+             aria-expanded="@(ctrlActive("Claim") ? "true" : "false")">
+            <i class="bi bi-file-earmark-medical menu-icon"></i> Claims
+            <i class="bi bi-chevron-right chevron"></i>
+        </div>
+        <div class="collapse sidebar-submenu @(ctrlActive("Claim") ? "show" : "")" id="menuClaims">
+            <a class="sidebar-link @isActive("Claim", "AllClaims")" asp-controller="Claim" asp-action="AllClaims">All Claims</a>
+            @if (isAgent)
+            {
+                <a class="sidebar-link @isActive("Claim", "LodgeClaim")" asp-controller="Claim" asp-action="LodgeClaim">Lodge New Claim</a>
+            }
+            <a class="sidebar-link @isActive("Claim", "PendingClaims")" asp-controller="Claim" asp-action="PendingClaims">Pending Claims</a>
+        </div>
+    }
+
+    <!-- ===================== REPORTS ===================== -->
+    @if (isSupport)
+    {
+        <div class="sidebar-section-label">Reports</div>
+
+        <div class="sidebar-toggle" data-bs-toggle="collapse" data-bs-target="#menuPolicyReports" aria-expanded="false">
+            <i class="bi bi-bar-chart menu-icon"></i> Policy Reports
+            <i class="bi bi-chevron-right chevron"></i>
+        </div>
+        <div class="collapse sidebar-submenu" id="menuPolicyReports">
+            <a class="sidebar-link @isActive("Report", "PolicySummary")" asp-controller="Report" asp-action="PolicySummary">Policy Summary</a>
+            <a class="sidebar-link @isActive("Report", "ExpirySchedule")" asp-controller="Report" asp-action="ExpirySchedule">Expiry Schedule</a>
+            @if (isSeniorAgent)
+            {
+                <a class="sidebar-link @isActive("Report", "AgentPerformance")" asp-controller="Report" asp-action="AgentPerformance">Agent Performance</a>
+            }
+        </div>
+
+        @if (isSeniorAgent)
+        {
+            <div class="sidebar-toggle" data-bs-toggle="collapse" data-bs-target="#menuFinReports" aria-expanded="false">
+                <i class="bi bi-graph-up-arrow menu-icon"></i> Financial Reports
+                <i class="bi bi-chevron-right chevron"></i>
+            </div>
+            <div class="collapse sidebar-submenu" id="menuFinReports">
+                <a class="sidebar-link @isActive("FinancialReport", "PremiumCollection")" asp-controller="FinancialReport" asp-action="PremiumCollection">Premium Collection</a>
+                <a class="sidebar-link @isActive("FinancialReport", "CommissionReport")" asp-controller="FinancialReport" asp-action="CommissionReport">Commission Report</a>
+                <a class="sidebar-link @isActive("FinancialReport", "OutstandingPremium")" asp-controller="FinancialReport" asp-action="OutstandingPremium">Outstanding Premium</a>
+            </div>
+        }
+
+        <div class="sidebar-toggle" data-bs-toggle="collapse" data-bs-target="#menuRenewalReports" aria-expanded="false">
+            <i class="bi bi-clipboard-data menu-icon"></i> Renewal Reports
+            <i class="bi bi-chevron-right chevron"></i>
+        </div>
+        <div class="collapse sidebar-submenu" id="menuRenewalReports">
+            <a class="sidebar-link @isActive("RenewalReport", "RenewalRate")" asp-controller="RenewalReport" asp-action="RenewalRate">Renewal Rate</a>
+            <a class="sidebar-link @isActive("RenewalReport", "NoticeHistory")" asp-controller="RenewalReport" asp-action="NoticeHistory">Notice History</a>
+        </div>
+    }
+
+    <!-- ===================== MASTER DATA ===================== -->
+    @if (isAdmin)
+    {
+        <div class="sidebar-section-label">Master Data</div>
+
+        <div class="sidebar-toggle" data-bs-toggle="collapse" data-bs-target="#menuMaster"
+             aria-expanded="@(ctrlActive("Master") ? "true" : "false")">
+            <i class="bi bi-database menu-icon"></i> Lookup Tables
+            <i class="bi bi-chevron-right chevron"></i>
+        </div>
+        <div class="collapse sidebar-submenu @(ctrlActive("Master") ? "show" : "")" id="menuMaster">
+            <a class="sidebar-link @isActive("Master", "Insurers")" asp-controller="Master" asp-action="Insurers">Insurers</a>
+            <a class="sidebar-link @isActive("Master", "PolicyClasses")" asp-controller="Master" asp-action="PolicyClasses">Policy Classes</a>
+            <a class="sidebar-link @isActive("Master", "NcdRates")" asp-controller="Master" asp-action="NcdRates">NCD Rates</a>
+            <a class="sidebar-link @isActive("Master", "VehicleMakes")" asp-controller="Master" asp-action="VehicleMakes">Vehicle Makes</a>
+            <a class="sidebar-link @isActive("Master", "MalaysianStates")" asp-controller="Master" asp-action="MalaysianStates">Malaysian States</a>
+        </div>
+    }
+
+    <!-- ===================== SECURITY ===================== -->
+    @if (isAdmin)
+    {
+        <div class="sidebar-section-label">Security</div>
+
+        <div class="sidebar-toggle" data-bs-toggle="collapse" data-bs-target="#menuSecurity"
+             aria-expanded="@(ctrlActive("Security") ? "true" : "false")">
+            <i class="bi bi-shield-lock menu-icon"></i> Administration
+            <i class="bi bi-chevron-right chevron"></i>
+        </div>
+        <div class="collapse sidebar-submenu @(ctrlActive("Security") ? "show" : "")" id="menuSecurity">
+            <a class="sidebar-link @isActive("Security", "Users")" asp-controller="Security" asp-action="Users">User Management</a>
+            <a class="sidebar-link @isActive("Security", "Roles")" asp-controller="Security" asp-action="Roles">Role Management</a>
+            <a class="sidebar-link @isActive("Security", "AgentProfiles")" asp-controller="Security" asp-action="AgentProfiles">Agent Profiles</a>
+            <a class="sidebar-link @isActive("Security", "AuditLog")" asp-controller="Security" asp-action="AuditLog">Session Audit Log</a>
+        </div>
+    }
+
+</nav>

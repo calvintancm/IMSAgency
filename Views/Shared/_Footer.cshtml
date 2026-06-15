@@ -1,0 +1,97 @@
+@* ═══════════════════════════════════════════
+   _Footer.cshtml — Responsive Footer Bar
+═══════════════════════════════════════════ *@
+
+<style>
+    #footer {
+        min-height: var(--footer-h);
+        height: auto;
+        background: var(--footer-bg);
+        border-top: 1px solid var(--footer-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 24px;
+        margin-top: 24px;
+        flex-shrink: 0;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .footer-left {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+        .footer-left strong {
+            color: var(--text-secondary);
+        }
+
+    .footer-right {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        flex-wrap: wrap;
+    }
+
+        .footer-right a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color var(--transition);
+        }
+
+            .footer-right a:hover {
+                color: var(--accent-lt);
+            }
+
+    .footer-status {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.75rem;
+        color: #10b981;
+        font-weight: 500;
+    }
+
+    #footerClock {
+        font-family: 'Sora', sans-serif;
+        font-size: 0.72rem;
+        color: var(--text-muted);
+    }
+
+    @@media (max-width: 576px) {
+        #footer
+
+    {
+        padding: 10px 16px;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .footer-right {
+        justify-content: center;
+    }
+
+    #footerClock,
+    .footer-hide-mobile {
+        display: none;
+    }
+
+    }</style>
+
+<footer id="footer">
+    <div class="footer-left">
+        &copy; @DateTime.Now.Year <strong>PTC Logistics</strong>
+        <span class="footer-hide-mobile">&mdash; IGH System v2.0</span>
+    </div>
+    <div class="footer-right">
+        <div class="footer-status">
+            <span class="online-dot"></span> Online
+        </div>
+        <span id="footerClock"></span>
+        <a href="#" class="footer-hide-mobile">Support</a>
+        <a href="#" class="footer-hide-mobile">Privacy</a>
+    </div>
+</footer>

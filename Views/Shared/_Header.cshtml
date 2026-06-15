@@ -1,0 +1,139 @@
+@* _Header.cshtml — Top Navigation Bar *@
+
+<style>
+    #topbar { position:sticky;top:0;height:var(--topbar-h);background:var(--topbar-bg);border-bottom:1px solid var(--topbar-border);box-shadow:var(--topbar-shadow);display:flex;align-items:center;padding:0 20px;gap:10px;z-index:1030;flex-shrink:0; }
+    #sidebarToggle { width:36px;height:36px;border:none;background:none;border-radius:var(--radius-sm);color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;transition:background var(--transition),color var(--transition); }
+    #sidebarToggle:hover { background:var(--content-bg);color:var(--accent); }
+    .topbar-breadcrumb { flex:1;display:flex;align-items:center;gap:6px;font-size:0.8rem;color:var(--text-muted);overflow:hidden; }
+    .topbar-breadcrumb .bc-sep { font-size:9px; }
+    .topbar-breadcrumb .bc-current { color:var(--text-primary);font-weight:600; }
+    .topbar-right { display:flex;align-items:center;gap:3px; }
+    .topbar-btn { width:36px;height:36px;border:none;background:none;border-radius:var(--radius-sm);color:var(--text-secondary);cursor:pointer;font-size:16px;position:relative;display:flex;align-items:center;justify-content:center;transition:background var(--transition),color var(--transition); }
+    .topbar-btn:hover { background:var(--content-bg);color:var(--accent); }
+    .topbar-badge { position:absolute;top:4px;right:3px;width:16px;height:16px;border-radius:50%;font-size:0.52rem;font-weight:700;display:flex;align-items:center;justify-content:center;color:#fff;border:2px solid var(--topbar-bg); }
+    .topbar-badge.blue   { background:var(--accent-lt); }
+    .topbar-badge.orange { background:var(--gold); }
+    .topbar-badge.red    { background:var(--clr-danger); }
+    .topbar-divider { width:1px;height:26px;background:var(--topbar-border);margin:0 5px; }
+    .topbar-user { display:flex;align-items:center;gap:9px;padding:5px 10px 5px 6px;border-radius:var(--radius-sm);cursor:pointer;border:none;background:none;transition:background var(--transition); }
+    .topbar-user:hover { background:var(--content-bg); }
+    .topbar-user-avatar { width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-lt));display:flex;align-items:center;justify-content:center;font-family:'Sora',sans-serif;font-weight:700;font-size:0.72rem;color:#fff;box-shadow:0 2px 6px rgba(217,119,6,0.35); }
+    .topbar-user-info { text-align:left;line-height:1.2; }
+    .topbar-user-name { font-size:0.8rem;font-weight:600;color:var(--text-primary); }
+    .topbar-user-role { font-size:0.66rem;color:var(--text-muted); }
+    .dropdown-menu { border:1px solid var(--topbar-border);box-shadow:0 8px 30px rgba(0,0,0,0.11);border-radius:var(--radius);padding:6px;min-width:200px; }
+    .dropdown-item { border-radius:var(--radius-sm);padding:8px 12px;font-size:0.82rem;color:var(--text-primary);display:flex;align-items:center;gap:10px;transition:background var(--transition); }
+    .dropdown-item:hover { background:var(--content-bg);color:var(--accent); }
+    .dropdown-item i { width:16px;text-align:center;color:var(--text-muted); }
+    .dropdown-divider { margin:4px 0;border-color:var(--topbar-border); }
+    .notif-item { padding:10px 12px;display:flex;gap:10px;align-items:flex-start;cursor:pointer;border-radius:var(--radius-sm);transition:background var(--transition);text-decoration:none;color:inherit; }
+    .notif-item:hover { background:var(--content-bg); }
+    .notif-title { font-weight:600;font-size:0.79rem;color:var(--text-primary); }
+    .notif-time  { font-size:0.7rem;color:var(--text-muted);margin-top:2px; }
+    @@media (max-width:576px) {
+        #topbar { padding:0 12px;gap:6px; }
+        .topbar-breadcrumb { font-size:0.74rem;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:160px; }
+        .topbar-btn { width:32px;height:32px;font-size:15px; }
+    }
+</style>
+
+<header id="topbar">
+    <button id="sidebarToggle" onclick="PTC.toggleSidebar()" title="Toggle Sidebar">
+        <i class="bi bi-list"></i>
+    </button>
+    <div class="topbar-breadcrumb">
+        <i class="bi bi-house" style="font-size:11px;"></i>
+        <span class="bc-sep"><i class="bi bi-chevron-right"></i></span>
+        <span>@(ViewData["BreadcrumbSection"] ?? "Main")</span>
+        @if (ViewData["BreadcrumbPage"] != null) {
+            <span class="bc-sep"><i class="bi bi-chevron-right"></i></span>
+            <span class="bc-current">@ViewData["BreadcrumbPage"]</span>
+        } else {
+            <span class="bc-sep"><i class="bi bi-chevron-right"></i></span>
+            <span class="bc-current">@(ViewData["Title"] ?? "Dashboard")</span>
+        }
+    </div>
+    <div class="topbar-right">
+        <button class="topbar-btn" title="Quick Search" id="btnSearch"><i class="bi bi-search"></i></button>
+        <div class="dropdown">
+            <button class="topbar-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-bell"></i><span class="topbar-badge orange">5</span>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end" style="min-width:310px;padding:8px;">
+                <div style="padding:6px 12px 8px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-family:'Sora',sans-serif;font-size:0.85rem;font-weight:700;">Notifications</span>
+                    <span style="font-size:0.7rem;color:var(--accent-lt);cursor:pointer;" onclick="KSwal.toast('info','All marked as read.')">Mark all read</span>
+                </div>
+                <hr class="dropdown-divider">
+                <a class="notif-item" href="#"><i class="bi bi-truck-front" style="color:var(--accent-lt);font-size:18px;margin-top:1px;"></i><div><div class="notif-title">New delivery order #DO-2024-089</div><div class="notif-time">2 minutes ago</div></div></a>
+                <a class="notif-item" href="#"><i class="bi bi-exclamation-triangle" style="color:var(--gold);font-size:18px;margin-top:1px;"></i><div><div class="notif-title">Vehicle TRK-045 requires inspection</div><div class="notif-time">15 minutes ago</div></div></a>
+                <a class="notif-item" href="#"><i class="bi bi-person-check" style="color:var(--clr-success);font-size:18px;margin-top:1px;"></i><div><div class="notif-title">Driver LIM A. checked in at Gate 2</div><div class="notif-time">32 minutes ago</div></div></a>
+                <hr class="dropdown-divider">
+                <div style="text-align:center;padding:6px;"><a href="#" style="font-size:0.78rem;color:var(--accent-lt);font-weight:600;text-decoration:none;">View all</a></div>
+            </div>
+        </div>
+        <button class="topbar-btn d-none d-sm-flex" title="Messages"><i class="bi bi-chat-dots"></i><span class="topbar-badge blue">3</span></button>
+        <button class="topbar-btn d-none d-md-flex" id="fsBtn" onclick="PTC.toggleFullscreen()"><i class="bi bi-fullscreen"></i></button>
+        <div class="topbar-divider d-none d-sm-block"></div>
+        <div class="dropdown">
+            <button class="topbar-user dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="border:none;">
+                <div class="topbar-user-avatar js-user-init">--</div>
+                <div class="topbar-user-info d-none d-lg-block">
+                    <div class="topbar-user-name js-user-name">Loading...</div>
+                    <div class="topbar-user-role">System User</div>
+                </div>
+                <i class="bi bi-chevron-down d-none d-sm-block" style="font-size:9px;color:var(--text-muted);margin-left:2px;"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li style="padding:10px 14px 8px;">
+                    <div style="font-weight:700;font-size:0.84rem;" class="js-user-name">Loading...</div>
+                    <div style="font-size:0.69rem;color:var(--text-muted);">System User</div>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item" asp-controller="Account" asp-action="UserProfile">
+                        <i class="bi bi-person-circle"></i> My Profile
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" asp-controller="Account" asp-action="ChangePassword">
+                        <i class="bi bi-shield-lock"></i> Change Password
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" asp-controller="Account" asp-action="Preferences">
+                        <i class="bi bi-sliders2"></i> Preferences
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#" onclick="PTC.confirmLogout();return false;" style="color:var(--clr-danger);"><i class="bi bi-box-arrow-left" style="color:var(--clr-danger);"></i> Sign Out</a></li>
+            </ul>
+        </div>
+    </div>
+</header>
+
+<script>
+$(function () {
+    $('#btnSearch').on('click', function () {
+        KSwal.fire({
+            title: 'Quick Search',
+            html: '<input id="ksSearchBox" class="k-textbox" style="width:100%;margin-top:8px;" placeholder="e.g. TRK-2241, Ahmad, DO-089..."/>',
+            icon: 'question',
+            confirmButtonText: 'Search',
+            confirmButtonColor: '#1a6eb5',
+            showCancelButton: true,
+            cancelButtonText: 'Close',
+            didOpen: function () { document.getElementById('ksSearchBox').focus(); },
+            preConfirm: function () {
+                var v = document.getElementById('ksSearchBox').value.trim();
+                if (!v) { Swal.showValidationMessage('Please enter a search term'); }
+                return v;
+            }
+        }).then(function (r) {
+            if (r.isConfirmed && r.value) {
+                KSwal.toast('info', 'Searching: ' + r.value);
+            }
+        });
+    });
+});
+</script>
