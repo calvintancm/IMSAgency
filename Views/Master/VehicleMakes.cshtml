@@ -1,0 +1,128 @@
+﻿@{
+    ViewData["Title"] = "Vehicle Makes";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Vehicle Makes</h1>
+        <p class="page-subtitle">Master list of vehicle brands for the Vehicle form's Make dropdown</p>
+    </div>
+    <div>
+        <button type="button" id="btnAddMake" class="btn-ptc-primary">
+            <i class="bi bi-plus-lg"></i> Add Vehicle Make
+        </button>
+    </div>
+</div>
+
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Vehicle Make Master List</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="vehiclemake_grid"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#vehiclemake_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: { url: '@Url.Action("VehicleMakesRead", "Master")', type: 'POST' },
+                        update: { url: '@Url.Action("VehicleMakesSave", "Master")', type: 'POST' },
+                        create: { url: '@Url.Action("VehicleMakesSave", "Master")', type: 'POST' },
+                        destroy: { url: '@Url.Action("VehicleMakesDelete", "Master")', type: 'POST' },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+
+                            if (operation === 'read') {
+                                return $.extend({}, data, { __RequestVerificationToken: token });
+                            }
+                            if (data.models && data.models.length > 0) {
+                                return $.extend({}, data.models[0], { __RequestVerificationToken: token });
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data',
+                        total: 'Total',
+                        errors: 'Errors',
+                        model: {
+                            id: 'VehicleMakeId',
+                            fields: {
+                                VehicleMakeId: { type: 'number', editable: false },
+                                MakeCode: { type: 'string', validation: { required: true, maxLength: 10 } },
+                                MakeName: { type: 'string', validation: { required: true, maxLength: 80 } },
+                                CountryOfOrigin: { type: 'string' },
+                                IsActive: { type: 'boolean', defaultValue: true }
+                            }
+                        }
+                    },
+                    pageSize: 15,
+                    serverPaging: false,
+                    serverSorting: false,
+                    sort: { field: 'MakeName', dir: 'asc' },
+                    error: function (e) {
+                        var msg = 'An error occurred.';
+                        try {
+                            var parsed = JSON.parse(e.xhr.responseText);
+                            if (parsed.Errors && parsed.Errors.error && parsed.Errors.error.errors) {
+                                msg = parsed.Errors.error.errors[0];
+                            }
+                        } catch (ex) { }
+                        KSwal.error(msg);
+                        this.cancelChanges();
+                    }
+                },
+                pageable: { pageSize: 15, pageSizes: [15, 30, 50] },
+                sortable: true,
+                scrollable: true,
+                height: 520,
+                editable: 'inline',
+                toolbar: [],
+                columns: [
+                    { field: 'MakeCode', title: 'Code', width: 90 },
+                    { field: 'MakeName', title: 'Make Name', width: 200 },
+                    { field: 'CountryOfOrigin', title: 'Country of Origin', width: 180 },
+                    {
+                        field: 'IsActive',
+                        title: 'Active',
+                        width: 90,
+                        template: function (item) {
+                            return item.IsActive
+                                ? '<span class="badge-status badge-active">Yes</span>'
+                                : '<span class="badge-status badge-cancelled">No</span>';
+                        }
+                    },
+                    { command: ['edit', 'destroy'], title: 'Actions', width: 160 }
+                ]
+            }).data("kendoGrid");
+
+            $("#btnAddMake").on("click", function () {
+                grid.addRow();
+            });
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $("#vehiclemake_grid").on("click", ".k-grid-delete", function (e) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                var row = $(this).closest("tr");
+                var dataItem = grid.dataItem(row);
+
+                KSwal.confirmDelete("Delete vehicle make '" + dataItem.MakeName + "'?").then(function (result) {
+                    if (result.isConfirmed) {
+                        grid.removeRow(row);
+                    }
+                });
+            });
+
+        });
+    </script>
+}

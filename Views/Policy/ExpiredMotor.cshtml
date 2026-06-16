@@ -1,0 +1,254 @@
+﻿@model ImsAgency.Web.Models.ViewModels.ExpiredPolicyListViewModel
+@{
+    ViewData["Title"] = "Expired Motor Policies";
+    var insurers = ViewBag.Insurers as IEnumerable<dynamic>;
+    var policyClasses = ViewBag.MotorPolicyClasses as IEnumerable<dynamic>;
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Expired Motor Policies</h1>
+        <p class="page-subtitle">Lapsed motor policies — candidates for renewal outreach</p>
+    </div>
+</div>
+
+<!-- ================================================================
+     STAT STRIP
+================================================================ -->
+<div style="display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:18px;">
+    <div class="stat-card stat-danger">
+        <div class="stat-label"><i class="bi bi-x-circle"></i> Total Expired Motor Policies</div>
+        <div class="stat-value">@Model.TotalExpiredMotor</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-label"><i class="bi bi-arrow-repeat"></i> Pending Renewal Quotes</div>
+        <div class="stat-value">@Model.PendingRenewalQuotes</div>
+    </div>
+</div>
+
+<!-- ================================================================
+     FILTER CARD
+================================================================ -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns: 2fr 1.2fr 1.2fr auto auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Search</label>
+                <input type="text" id="filterSearchText" class="form-control"
+                       placeholder="Cover Note, Policy No., Client, or Reg. No." />
+            </div>
+            <div>
+                <label class="form-label">Insurer</label>
+                <select id="filterInsurer" class="form-select">
+                    <option value="0">All Insurers</option>
+                    @if (insurers != null)
+                    {
+                        @foreach (var ins in insurers)
+                        {
+                            <option value="@ins.InsurerId">@ins.InsurerName</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Policy Class</label>
+                <select id="filterClass" class="form-select">
+                    <option value="All">All Classes</option>
+                    @if (policyClasses != null)
+                    {
+                        @foreach (var pc in policyClasses)
+                        {
+                            <option value="@pc.ClassCode">@pc.ClassName</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+            <div>
+                <button type="button" id="btnClearFilter" class="btn-ptc-outline">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
+     GRID CARD
+================================================================ -->
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Expired Motor Policies</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="expired_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            function getFilters() {
+                return {
+                    searchText: $('#filterSearchText').val(),
+                    insurerId: $('#filterInsurer').val(),
+                    policyClassCode: $('#filterClass').val()
+                };
+            }
+
+            var grid = $("#expired_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: {
+                            url: '@Url.Action("ExpiredMotorRead", "Policy")',
+                            type: 'POST'
+                        },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+
+                            if (operation === 'read') {
+                                var sortField = null, sortDir = null;
+                                if (data.sort && data.sort.length > 0) {
+                                    sortField = data.sort[0].field;
+                                    sortDir = data.sort[0].dir;
+                                }
+                                return $.extend({
+                                    page: data.page,
+                                    pageSize: data.pageSize,
+                                    sortField: sortField,
+                                    sortDir: sortDir
+                                }, getFilters(), { __RequestVerificationToken: token });
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data',
+                        total: 'Total',
+                        errors: 'Errors',
+                        model: {
+                            id: 'PolicyId',
+                            fields: {
+                                PolicyId: { type: 'number' },
+                                CoverNoteNumber: { type: 'string' },
+                                PolicyNumber: { type: 'string' },
+                                ClientName: { type: 'string' },
+                                RegistrationNumber: { type: 'string' },
+                                InsurerName: { type: 'string' },
+                                PolicyClassName: { type: 'string' },
+                                ExpiryDate: { type: 'date' },
+                                NetPremiumPayable: { type: 'number' },
+                                HasRenewalQuote: { type: 'boolean' }
+                            }
+                        }
+                    },
+                    pageSize: 15,
+                    serverPaging: true,
+                    serverSorting: true,
+                    sort: { field: 'ExpiryDate', dir: 'desc' },
+                    error: function (e) {
+                        var msg = 'An error occurred.';
+                        try {
+                            var parsed = JSON.parse(e.xhr.responseText);
+                            if (parsed.Errors && parsed.Errors.error && parsed.Errors.error.errors) {
+                                msg = parsed.Errors.error.errors[0];
+                            }
+                        } catch (ex) { }
+                        KSwal.error(msg);
+                    }
+                },
+                pageable: { pageSize: 15, pageSizes: [15, 30, 50], info: true },
+                sortable: true,
+                scrollable: true,
+                height: 540,
+                columns: [
+                    {
+                        field: 'CoverNoteNumber',
+                        title: 'Cover Note / Policy No.',
+                        width: 170,
+                        template: function (item) {
+                            var html = '<strong>' + item.CoverNoteNumber + '</strong>';
+                            if (item.PolicyNumber) {
+                                html += '<br/><small class="text-muted">' + item.PolicyNumber + '</small>';
+                            }
+                            return html;
+                        }
+                    },
+                    { field: 'ClientName', title: 'Client', width: 200 },
+                    {
+                        field: 'RegistrationNumber',
+                        title: 'Vehicle / Class',
+                        width: 150,
+                        template: function (item) {
+                            return (item.RegistrationNumber || '—') + '<br/><small class="text-muted">' + item.PolicyClassName + '</small>';
+                        }
+                    },
+                    { field: 'InsurerName', title: 'Insurer', width: 170 },
+                    {
+                        field: 'ExpiryDate',
+                        title: 'Expired On',
+                        width: 120,
+                        template: function (item) {
+                            return '<span class="badge-status badge-expired">' +
+                                kendo.toString(kendo.parseDate(item.ExpiryDate), 'dd/MM/yyyy') + '</span>';
+                        }
+                    },
+                    {
+                        field: 'NetPremiumPayable',
+                        title: 'Last Premium',
+                        width: 120,
+                        attributes: { style: 'text-align:right;' },
+                        template: function (item) {
+                            return 'RM ' + parseFloat(item.NetPremiumPayable).toFixed(2);
+                        }
+                    },
+                    {
+                        field: 'HasRenewalQuote',
+                        title: 'Renewal Status',
+                        width: 150,
+                        template: function (item) {
+                            return item.HasRenewalQuote
+                                ? '<span class="badge-status badge-pending"><i class="bi bi-arrow-repeat"></i> Quote Prepared</span>'
+                                : '<span class="text-muted small">Not yet contacted</span>';
+                        }
+                    },
+                    {
+                        title: 'Actions',
+                        width: 130,
+                        template: function (item) {
+                            var html = '<a href="@Url.Action("Details")/' + item.PolicyId + '" class="btn btn-sm btn-outline-primary" title="View"><i class="bi bi-eye"></i></a> ';
+                            if (!item.HasRenewalQuote) {
+                                html += '<a href="@Url.Action("RenewPolicy")/' + item.PolicyId + '" class="btn btn-sm btn-outline-success" title="Renew"><i class="bi bi-arrow-repeat"></i> Renew</a>';
+                            }
+                            return html;
+                        }
+                    }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+            $('#btnClearFilter').on('click', function () {
+                $('#filterSearchText').val('');
+                $('#filterInsurer').val('0');
+                $('#filterClass').val('All');
+                grid.dataSource.page(1);
+            });
+            $('#filterSearchText').on('keypress', function (e) {
+                if (e.which === 13) { $('#btnSearch').click(); }
+            });
+
+        });
+    </script>
+}

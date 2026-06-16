@@ -1,0 +1,304 @@
+﻿@model ImsAgency.Web.Models.ViewModels.ClientListViewModel
+@{
+    ViewData["Title"] = "All Clients";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">All Clients</h1>
+        <p class="page-subtitle">Customer registry — individuals and companies</p>
+    </div>
+    <div>
+        <a href="@Url.Action("AddClient")" class="btn-ptc-primary">
+            <i class="bi bi-plus-lg"></i> Add New Client
+        </a>
+    </div>
+</div>
+
+<!-- ================================================================
+     STAT STRIP
+================================================================ -->
+<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px;">
+    <div class="stat-card">
+        <div class="stat-label"><i class="bi bi-people"></i> Total Clients</div>
+        <div class="stat-value">@Model.TotalClients</div>
+    </div>
+    <div class="stat-card stat-accent">
+        <div class="stat-label"><i class="bi bi-person"></i> Individuals</div>
+        <div class="stat-value">@Model.IndividualCount</div>
+    </div>
+    <div class="stat-card stat-accent">
+        <div class="stat-label"><i class="bi bi-building"></i> Companies</div>
+        <div class="stat-value">@Model.CompanyCount</div>
+    </div>
+    <div class="stat-card stat-danger">
+        <div class="stat-label"><i class="bi bi-slash-circle"></i> Blacklisted</div>
+        <div class="stat-value">@Model.BlacklistedCount</div>
+    </div>
+</div>
+
+<!-- ================================================================
+     FILTER CARD
+================================================================ -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr auto auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Search</label>
+                <input type="text" id="filterSearchText" class="form-control"
+                       placeholder="Client Code, Name, or NRIC/BRN" />
+            </div>
+            <div>
+                <label class="form-label">Client Type</label>
+                <select id="filterClientType" class="form-select">
+                    <option value="All">All Types</option>
+                    <option value="Individual">Individual</option>
+                    <option value="Company">Company</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Status</label>
+                <select id="filterStatus" class="form-select">
+                    <option value="All">All</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                </select>
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+            <div>
+                <button type="button" id="btnClearFilter" class="btn-ptc-outline">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
+     GRID CARD
+================================================================ -->
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Client Registry</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="client_grid"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            // ================================================================
+            // getFilters() — collects current filter values to send with
+            // every "read" request. Reused pattern for all large-dataset grids.
+            // ================================================================
+            function getFilters() {
+                return {
+                    searchText: $('#filterSearchText').val(),
+                    clientType: $('#filterClientType').val(),
+                    status: $('#filterStatus').val()
+                };
+            }
+
+            var grid = $("#client_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: {
+                            url: '@Url.Action("ClientsRead", "Client")',
+                            type: 'POST'
+                        },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+
+                            if (operation === 'read') {
+                                var sortField = null, sortDir = null;
+                                if (data.sort && data.sort.length > 0) {
+                                    sortField = data.sort[0].field;
+                                    sortDir = data.sort[0].dir;
+                                }
+
+                                return $.extend({
+                                    page: data.page,
+                                    pageSize: data.pageSize,
+                                    sortField: sortField,
+                                    sortDir: sortDir
+                                }, getFilters(), { __RequestVerificationToken: token });
+                            }
+
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data',
+                        total: 'Total',
+                        errors: 'Errors',
+                        model: {
+                            id: 'ClientId',
+                            fields: {
+                                ClientId: { type: 'number' },
+                                ClientCode: { type: 'string' },
+                                ClientType: { type: 'string' },
+                                ClientName: { type: 'string' },
+                                IdentificationNumber: { type: 'string' },
+                                IdentificationType: { type: 'string' },
+                                EmailAddress: { type: 'string' },
+                                IsActive: { type: 'boolean' },
+                                PrimaryPhone: { type: 'string' },
+                                PolicyCount: { type: 'number' }
+                            }
+                        }
+                    },
+                    pageSize: 15,
+                    serverPaging: true,
+                    serverSorting: true,
+                    sort: { field: 'ClientId', dir: 'desc' },
+                    error: function (e) {
+                        var msg = 'An error occurred.';
+                        try {
+                            var parsed = JSON.parse(e.xhr.responseText);
+                            if (parsed.Errors && parsed.Errors.error && parsed.Errors.error.errors) {
+                                msg = parsed.Errors.error.errors[0];
+                            }
+                        } catch (ex) { }
+                        KSwal.error(msg);
+                    }
+                },
+                pageable: { pageSize: 15, pageSizes: [15, 30, 50], info: true },
+                sortable: true,
+                scrollable: true,
+                height: 540,
+                columns: [
+                    {
+                        field: 'ClientCode',
+                        title: 'Client Code',
+                        width: 130,
+                        template: function (item) {
+                            return '<a href="@Url.Action("Profile")/' + item.ClientId + '" class="text-decoration-none fw-semibold">' + item.ClientCode + '</a>';
+                        }
+                    },
+                    {
+                        field: 'ClientName',
+                        title: 'Name',
+                        width: 240
+                    },
+                    {
+                        field: 'ClientType',
+                        title: 'Type',
+                        width: 100,
+                        template: function (item) {
+                            var icon = item.ClientType === 'Company' ? 'bi-building' : 'bi-person';
+                            return '<i class="bi ' + icon + '"></i> ' + item.ClientType;
+                        }
+                    },
+                    {
+                        field: 'IdentificationNumber',
+                        title: 'NRIC / BRN',
+                        width: 150,
+                        template: function (item) {
+                            return item.IdentificationNumber + '<br/><small class="text-muted">' + item.IdentificationType + '</small>';
+                        }
+                    },
+                    {
+                        field: 'PrimaryPhone',
+                        title: 'Phone',
+                        width: 130,
+                        template: function (item) {
+                            return item.PrimaryPhone || '<span class="text-muted">—</span>';
+                        }
+                    },
+                    {
+                        field: 'PolicyCount',
+                        title: 'Policies',
+                        width: 90,
+                        attributes: { style: 'text-align:center;' },
+                        template: function (item) {
+                            return '<span class="badge-status badge-active">' + item.PolicyCount + '</span>';
+                        }
+                    },
+                    {
+                        field: 'IsActive',
+                        title: 'Status',
+                        width: 100,
+                        template: function (item) {
+                            return item.IsActive
+                                ? '<span class="badge-status badge-active">Active</span>'
+                                : '<span class="badge-status badge-cancelled">Inactive</span>';
+                        }
+                    },
+                    {
+                        title: 'Actions',
+                        width: 180,
+                        template: function (item) {
+                            return '<a href="@Url.Action("Profile")/' + item.ClientId + '" class="btn btn-sm btn-outline-primary" title="360 View"><i class="bi bi-eye"></i></a> ' +
+                                   '<a href="@Url.Action("EditClient")/' + item.ClientId + '" class="btn btn-sm btn-outline-secondary" title="Edit"><i class="bi bi-pencil"></i></a> ' +
+                                   '<button type="button" class="btn btn-sm btn-outline-danger btn-blacklist" data-id="' + item.ClientId + '" data-name="' + item.ClientName + '" title="Blacklist"><i class="bi bi-slash-circle"></i></button>';
+                        }
+                    }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            // ---- Search / Clear ----
+            $('#btnSearch').on('click', function () {
+                grid.dataSource.page(1); // reset to page 1 when filtering
+            });
+
+            $('#btnClearFilter').on('click', function () {
+                $('#filterSearchText').val('');
+                $('#filterClientType').val('All');
+                $('#filterStatus').val('All');
+                grid.dataSource.page(1);
+            });
+
+            // Allow Enter key in search box to trigger search
+            $('#filterSearchText').on('keypress', function (e) {
+                if (e.which === 13) { $('#btnSearch').click(); }
+            });
+
+            // ---- Blacklist button ----
+            $("#client_grid").on("click", ".btn-blacklist", function () {
+                var clientId = $(this).data('id');
+                var clientName = $(this).data('name');
+
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Blacklist Client?',
+                    html: 'Blacklist <strong>' + clientName + '</strong>?<br/>This client will be hidden from normal client lists.',
+                    input: 'text',
+                    inputLabel: 'Reason (optional)',
+                    inputPlaceholder: 'e.g. Repeated late payments',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, blacklist',
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#94a3b8'
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        $.post('@Url.Action("ToggleBlacklist", "Client")', {
+                            ClientId: clientId,
+                            Reason: result.value,
+                            __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                        }).done(function (res) {
+                            if (res.Errors) {
+                                KSwal.error(res.Errors.error.errors[0]);
+                            } else {
+                                KSwal.success('Client blacklisted.');
+                                grid.dataSource.read();
+                            }
+                        });
+                    }
+                });
+            });
+
+        });
+    </script>
+}

@@ -34,6 +34,6 @@ namespace ImsAgency.Web.Models.IMS
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         // ---- Navigation ----
-        //public ICollection<Policy> Policies { get; set; } = new List<Policy>();
+        public ICollection<Policy> Policies { get; set; } = new List<Policy>();
     }
 }

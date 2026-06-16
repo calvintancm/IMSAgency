@@ -1,0 +1,494 @@
+﻿@model ImsAgency.Web.Models.ViewModels.ClientFormViewModel
+@{
+    ViewData["Title"] = Model.ClientId == 0 ? "Add New Client" : "Edit Client";
+    var isNew = Model.ClientId == 0;
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">@(isNew ? "Add New Client" : "Edit Client")</h1>
+        <p class="page-subtitle">
+            @if (isNew)
+            {
+                @:Client Code will be auto-generated on save (e.g. CLT-2026-0009)
+            }
+            else
+            {
+                <span>Client Code: <strong>@Model.ClientCode</strong></span>
+            }
+        </p>
+    </div>
+    <div>
+        @if (!isNew)
+        {
+            <a href="@Url.Action("Profile", new { id = Model.ClientId })" class="btn-ptc-outline">
+                <i class="bi bi-eye"></i> View 360° Profile
+            </a>
+        }
+        <a href="@Url.Action("AllClients")" class="btn-ptc-outline">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+<input type="hidden" id="clientId" value="@Model.ClientId" />
+
+<!-- ================================================================
+     CLIENT DETAILS FORM
+================================================================ -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Client Details</h2>
+    </div>
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px;">
+
+            <div>
+                <label class="form-label">Client Type <span class="text-danger">*</span></label>
+                <select id="ClientType" class="form-select">
+                    <option value="Individual" selected="@(Model.ClientType == "Individual")">Individual</option>
+                    <option value="Company" selected="@(Model.ClientType == "Company")">Company</option>
+                </select>
+            </div>
+
+            <div style="grid-column: span 2;">
+                <label class="form-label">
+                    <span id="lblClientName">Client Name</span> <span class="text-danger">*</span>
+                </label>
+                <input type="text" id="ClientName" class="form-control" value="@Model.ClientName"
+                       placeholder="e.g. AHMAD BIN IBRAHIM or ABC TRADING SDN BHD" />
+            </div>
+
+            <div>
+                <label class="form-label">Identification Type <span class="text-danger">*</span></label>
+                <select id="IdentificationType" class="form-select">
+                    <option value="NRIC" selected="@(Model.IdentificationType == "NRIC")">NRIC</option>
+                    <option value="Passport" selected="@(Model.IdentificationType == "Passport")">Passport</option>
+                    <option value="BRN" selected="@(Model.IdentificationType == "BRN")">Business Reg. No. (BRN)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="form-label">
+                    <span id="lblIdNumber">Identification Number</span> <span class="text-danger">*</span>
+                </label>
+                <input type="text" id="IdentificationNumber" class="form-control" value="@Model.IdentificationNumber"
+                       placeholder="e.g. 850101-14-5678" />
+            </div>
+
+            <div>
+                <label class="form-label">Gender</label>
+                <select id="Gender" class="form-select">
+                    <option value="Unknown" selected="@(Model.Gender == "Unknown")">Unknown / N/A</option>
+                    <option value="Male" selected="@(Model.Gender == "Male")">Male</option>
+                    <option value="Female" selected="@(Model.Gender == "Female")">Female</option>
+                </select>
+            </div>
+
+            <div id="dobField">
+                <label class="form-label">Date of Birth</label>
+                <input type="date" id="DateOfBirth" class="form-control"
+                       value="@(Model.DateOfBirth?.ToString("yyyy-MM-dd"))" />
+            </div>
+
+            <div>
+                <label class="form-label">Email Address</label>
+                <input type="email" id="EmailAddress" class="form-control" value="@Model.EmailAddress" />
+            </div>
+
+            <div style="grid-column: span 2;">
+                <label class="form-label">
+                    <span id="lblOccupation">Occupation</span>
+                </label>
+                <input type="text" id="OccupationOrBusiness" class="form-control" value="@Model.OccupationOrBusiness" />
+            </div>
+
+            <div>
+                <label class="form-label">Status</label>
+                <select id="IsActive" class="form-select">
+                    <option value="true" selected="@(Model.IsActive)">Active</option>
+                    <option value="false" selected="@(!Model.IsActive)">Inactive</option>
+                </select>
+            </div>
+
+            <div style="grid-column: span 3;">
+                <label class="form-label">Remarks</label>
+                <textarea id="Remarks" class="form-control" rows="2">@Model.Remarks</textarea>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <button type="button" id="btnSaveClient" class="btn-ptc-primary">
+                <i class="bi bi-save"></i> @(isNew ? "Create Client" : "Save Changes")
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
+     PHONE & ADDRESS SUB-GRIDS — disabled until client is saved
+================================================================ -->
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+
+    <div class="ptc-card">
+        <div class="ptc-card-header">
+            <h2 class="ptc-card-title">Phone Numbers</h2>
+            @if (!isNew)
+            {
+                <button type="button" id="btnAddPhone" class="btn-ptc-outline btn-sm">
+                    <i class="bi bi-plus-lg"></i> Add
+                </button>
+            }
+        </div>
+        <div class="ptc-card-body" style="padding:0;">
+            @if (isNew)
+            {
+                <div class="p-4 text-center text-muted">
+                    <i class="bi bi-info-circle"></i> Save the client details first to add phone numbers.
+                </div>
+            }
+            else
+            {
+                <div id="phone_grid"></div>
+            }
+        </div>
+    </div>
+
+    <div class="ptc-card">
+        <div class="ptc-card-header">
+            <h2 class="ptc-card-title">Addresses</h2>
+            @if (!isNew)
+            {
+                <button type="button" id="btnAddAddress" class="btn-ptc-outline btn-sm">
+                    <i class="bi bi-plus-lg"></i> Add
+                </button>
+            }
+        </div>
+        <div class="ptc-card-body" style="padding:0;">
+            @if (isNew)
+            {
+                <div class="p-4 text-center text-muted">
+                    <i class="bi bi-info-circle"></i> Save the client details first to add addresses.
+                </div>
+            }
+            else
+            {
+                <div id="address_grid"></div>
+            }
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script>
+        var MALAYSIAN_STATES = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ImsAgency.Web.Models.IMS.MalaysianStateList.States));
+
+        $(document).ready(function () {
+
+            var isCompany = $('#ClientType').val() === 'Company';
+
+            // ================================================================
+            // Toggle field labels/visibility based on Client Type
+            // (Company hides DOB, relabels Name/ID/Occupation)
+            // ================================================================
+            function applyClientTypeLabels() {
+                var isCompany = $('#ClientType').val() === 'Company';
+
+                if (isCompany) {
+                    $('#lblClientName').text('Company Name');
+                    $('#lblIdNumber').text('Business Registration Number (BRN)');
+                    $('#lblOccupation').text('Nature of Business');
+                    $('#dobField').hide();
+                    if ($('#IdentificationType').val() !== 'BRN') {
+                        $('#IdentificationType').val('BRN');
+                    }
+                    $('#Gender').val('Unknown');
+                } else {
+                    $('#lblClientName').text('Client Name');
+                    $('#lblIdNumber').text('Identification Number');
+                    $('#lblOccupation').text('Occupation');
+                    $('#dobField').show();
+                    if ($('#IdentificationType').val() === 'BRN') {
+                        $('#IdentificationType').val('NRIC');
+                    }
+                }
+            }
+            applyClientTypeLabels();
+            $('#ClientType').on('change', applyClientTypeLabels);
+
+            // ================================================================
+            // SAVE CLIENT DETAILS (AJAX)
+            // ================================================================
+            $('#btnSaveClient').on('click', function () {
+                var payload = {
+                    ClientId: $('#clientId').val(),
+                    ClientType: $('#ClientType').val(),
+                    ClientName: $('#ClientName').val(),
+                    IdentificationNumber: $('#IdentificationNumber').val(),
+                    IdentificationType: $('#IdentificationType').val(),
+                    DateOfBirth: $('#DateOfBirth').val() || null,
+                    Gender: $('#Gender').val(),
+                    EmailAddress: $('#EmailAddress').val(),
+                    OccupationOrBusiness: $('#OccupationOrBusiness').val(),
+                    IsActive: $('#IsActive').val(),
+                    Remarks: $('#Remarks').val(),
+                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                };
+
+                if (!payload.ClientName || !payload.IdentificationNumber) {
+                    KSwal.warning('Client Name and Identification Number are required.');
+                    return;
+                }
+
+                $.post('@Url.Action("SaveClient", "Client")', payload)
+                    .done(function (res) {
+                        if (res.success) {
+                            if (res.isNew) {
+                                KSwal.success(res.message).then(function () {
+                                    window.location.href = res.redirectUrl;
+                                });
+                            } else {
+                                KSwal.success(res.message);
+                            }
+                        } else {
+                            KSwal.error(res.message);
+                        }
+                    })
+                    .fail(function () {
+                        KSwal.error('An unexpected error occurred while saving.');
+                    });
+            });
+
+            @if (!isNew)
+            {
+                    @:initPhoneGrid();
+                    @:initAddressGrid();
+            }
+
+            // ================================================================
+            // PHONE GRID
+            // ================================================================
+            function initPhoneGrid() {
+                var phoneGrid = $("#phone_grid").kendoGrid({
+                    dataSource: {
+                        transport: {
+                            read: {
+                                url: '@Url.Action("ClientPhonesRead", "Client")',
+                                type: 'POST',
+                                data: function () { return { clientId: @Model.ClientId }; }
+                            },
+                            update: { url: '@Url.Action("ClientPhonesSave", "Client")', type: 'POST' },
+                            create: { url: '@Url.Action("ClientPhonesSave", "Client")', type: 'POST' },
+                            destroy: { url: '@Url.Action("ClientPhonesDelete", "Client")', type: 'POST' },
+                            parameterMap: function (data, operation) {
+                                var token = $('input[name="__RequestVerificationToken"]').val();
+                                if (operation === 'read') {
+                                    return $.extend({}, data, { __RequestVerificationToken: token });
+                                }
+                                if (data.models && data.models.length > 0) {
+                                    var m = data.models[0];
+                                    m.ClientId = @Model.ClientId;
+                                    return $.extend({}, m, { __RequestVerificationToken: token });
+                                }
+                                return $.extend({}, data, { __RequestVerificationToken: token, ClientId: @Model.ClientId });
+                            }
+                        },
+                        schema: {
+                            data: 'Data', total: 'Total', errors: 'Errors',
+                            model: {
+                                id: 'PhoneId',
+                                fields: {
+                                    PhoneId: { type: 'number', editable: false },
+                                    ClientId: { type: 'number', editable: false, defaultValue: @Model.ClientId },
+                                    PhoneNumber: { type: 'string', validation: { required: true, maxLength: 30 } },
+                                    PhoneType: { type: 'string', defaultValue: 'M' },
+                                    IsPrimary: { type: 'boolean', defaultValue: false },
+                                    IsWhatsApp: { type: 'boolean', defaultValue: true }
+                                }
+                            }
+                        },
+                        serverPaging: false, serverSorting: false,
+                        error: function (e) { gridErrorHandler(e, this); }
+                    },
+                    editable: 'inline',
+                    scrollable: false,
+                    height: 280,
+                    toolbar: [],
+                    columns: [
+                        { field: 'PhoneNumber', title: 'Phone Number', width: 140 },
+                        {
+                            field: 'PhoneType', title: 'Type', width: 90,
+                            editor: phoneTypeDropdown,
+                            template: function (item) {
+                                var labels = { M: 'Mobile', H: 'Home', O: 'Office', F: 'Fax' };
+                                return labels[item.PhoneType] || item.PhoneType;
+                            }
+                        },
+                        {
+                            field: 'IsPrimary', title: 'Primary', width: 80,
+                            template: function (item) {
+                                return item.IsPrimary ? '<span class="badge-status badge-active">Yes</span>' : '';
+                            }
+                        },
+                        {
+                            field: 'IsWhatsApp', title: 'WhatsApp', width: 90,
+                            template: function (item) {
+                                return item.IsWhatsApp ? '<i class="bi bi-whatsapp text-success"></i>' : '';
+                            }
+                        },
+                        { command: ['edit', 'destroy'], title: '', width: 130 }
+                    ]
+                }).data("kendoGrid");
+
+                $('#btnAddPhone').on('click', function () { phoneGrid.addRow(); });
+
+                bindDeleteConfirm('#phone_grid', phoneGrid, 'phone number');
+            }
+
+            function phoneTypeDropdown(container, options) {
+                $('<input name="' + options.field + '"/>')
+                    .appendTo(container)
+                    .kendoDropDownList({
+                        dataSource: [
+                            { text: 'Mobile', value: 'M' },
+                            { text: 'Home', value: 'H' },
+                            { text: 'Office', value: 'O' },
+                            { text: 'Fax', value: 'F' }
+                        ],
+                        dataTextField: 'text',
+                        dataValueField: 'value',
+                        value: options.model.PhoneType
+                    });
+            }
+
+            // ================================================================
+            // ADDRESS GRID
+            // ================================================================
+            function initAddressGrid() {
+                var addressGrid = $("#address_grid").kendoGrid({
+                    dataSource: {
+                        transport: {
+                            read: {
+                                url: '@Url.Action("ClientAddressesRead", "Client")',
+                                type: 'POST',
+                                data: function () { return { clientId: @Model.ClientId }; }
+                            },
+                            update: { url: '@Url.Action("ClientAddressesSave", "Client")', type: 'POST' },
+                            create: { url: '@Url.Action("ClientAddressesSave", "Client")', type: 'POST' },
+                            destroy: { url: '@Url.Action("ClientAddressesDelete", "Client")', type: 'POST' },
+                            parameterMap: function (data, operation) {
+                                var token = $('input[name="__RequestVerificationToken"]').val();
+                                if (operation === 'read') {
+                                    return $.extend({}, data, { __RequestVerificationToken: token });
+                                }
+                                if (data.models && data.models.length > 0) {
+                                    var m = data.models[0];
+                                    m.ClientId = @Model.ClientId;
+                                    return $.extend({}, m, { __RequestVerificationToken: token });
+                                }
+                                return $.extend({}, data, { __RequestVerificationToken: token, ClientId: @Model.ClientId });
+                            }
+                        },
+                        schema: {
+                            data: 'Data', total: 'Total', errors: 'Errors',
+                            model: {
+                                id: 'AddressId',
+                                fields: {
+                                    AddressId: { type: 'number', editable: false },
+                                    ClientId: { type: 'number', editable: false, defaultValue: @Model.ClientId },
+                                    AddressType: { type: 'string', defaultValue: 'Residential' },
+                                    AddressLine1: { type: 'string', validation: { required: true, maxLength: 200 } },
+                                    AddressLine2: { type: 'string' },
+                                    City: { type: 'string', validation: { required: true, maxLength: 80 } },
+                                    State: { type: 'string', validation: { required: true } },
+                                    Postcode: { type: 'string', validation: { required: true, maxLength: 10 } },
+                                    IsPrimary: { type: 'boolean', defaultValue: false }
+                                }
+                            }
+                        },
+                        serverPaging: false, serverSorting: false,
+                        error: function (e) { gridErrorHandler(e, this); }
+                    },
+                    editable: 'inline',
+                    scrollable: false,
+                    height: 280,
+                    toolbar: [],
+                    columns: [
+                        {
+                            field: 'AddressType', title: 'Type', width: 100,
+                            editor: addressTypeDropdown
+                        },
+                        { field: 'AddressLine1', title: 'Address Line 1', width: 180 },
+                        { field: 'City', title: 'City', width: 110 },
+                        {
+                            field: 'State', title: 'State', width: 140,
+                            editor: stateDropdown
+                        },
+                        { field: 'Postcode', title: 'Postcode', width: 90 },
+                        {
+                            field: 'IsPrimary', title: 'Primary', width: 80,
+                            template: function (item) {
+                                return item.IsPrimary ? '<span class="badge-status badge-active">Yes</span>' : '';
+                            }
+                        },
+                        { command: ['edit', 'destroy'], title: '', width: 130 }
+                    ]
+                }).data("kendoGrid");
+
+                $('#btnAddAddress').on('click', function () { addressGrid.addRow(); });
+
+                bindDeleteConfirm('#address_grid', addressGrid, 'address');
+            }
+
+            function addressTypeDropdown(container, options) {
+                $('<input name="' + options.field + '"/>')
+                    .appendTo(container)
+                    .kendoDropDownList({
+                        dataSource: ['Residential', 'Postal', 'Business'],
+                        value: options.model.AddressType
+                    });
+            }
+
+            function stateDropdown(container, options) {
+                $('<input name="' + options.field + '"/>')
+                    .appendTo(container)
+                    .kendoDropDownList({
+                        dataSource: MALAYSIAN_STATES,
+                        value: options.model.State
+                    });
+            }
+
+            // ================================================================
+            // SHARED HELPERS
+            // ================================================================
+            function gridErrorHandler(e, grid) {
+                var msg = 'An error occurred.';
+                try {
+                    var parsed = JSON.parse(e.xhr.responseText);
+                    if (parsed.Errors && parsed.Errors.error && parsed.Errors.error.errors) {
+                        msg = parsed.Errors.error.errors[0];
+                    }
+                } catch (ex) { }
+                KSwal.error(msg);
+                grid.cancelChanges();
+            }
+
+            function bindDeleteConfirm(gridSelector, gridInstance, label) {
+                $(gridSelector).on("click", ".k-grid-delete", function (e) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    var row = $(this).closest("tr");
+
+                    KSwal.confirmDelete("Delete this " + label + "?").then(function (result) {
+                        if (result.isConfirmed) {
+                            gridInstance.removeRow(row);
+                        }
+                    });
+                });
+            }
+
+        });
+    </script>
+}

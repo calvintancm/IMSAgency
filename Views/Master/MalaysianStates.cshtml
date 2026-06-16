@@ -1,0 +1,74 @@
+﻿@{
+    ViewData["Title"] = "Malaysian States";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Malaysian States</h1>
+        <p class="page-subtitle">Reference list used for the State dropdown on Client Address forms</p>
+    </div>
+</div>
+
+<div class="alert alert-secondary mb-3">
+    <i class="bi bi-info-circle"></i>
+    This list is hardcoded in <code>MalaysianStateList.cs</code> and is read-only —
+    Malaysia's 16 states and federal territories don't change, so no CRUD is provided here.
+</div>
+
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">States &amp; Federal Territories</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="state_grid"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#state_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: { url: '@Url.Action("MalaysianStatesRead", "Master")', type: 'POST' },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data',
+                        total: 'Total',
+                        errors: 'Errors',
+                        model: {
+                            id: 'Id',
+                            fields: {
+                                Id: { type: 'number' },
+                                StateName: { type: 'string' }
+                            }
+                        }
+                    },
+                    pageSize: 20,
+                    serverPaging: false,
+                    serverSorting: false,
+                    sort: { field: 'StateName', dir: 'asc' }
+                },
+                pageable: { pageSize: 20, pageSizes: [20, 50] },
+                sortable: true,
+                scrollable: true,
+                height: 520,
+                columns: [
+                    { field: 'Id', title: '#', width: 60 },
+                    { field: 'StateName', title: 'State / Federal Territory' }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+        });
+    </script>
+}

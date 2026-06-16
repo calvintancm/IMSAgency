@@ -1,0 +1,219 @@
+﻿@{
+    ViewData["Title"] = "Insurers";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Insurers</h1>
+        <p class="page-subtitle">Master list of insurance companies the agency works with</p>
+    </div>
+    <div>
+        <button type="button" id="btnAddInsurer" class="btn-ptc-primary">
+            <i class="bi bi-plus-lg"></i> Add Insurer
+        </button>
+    </div>
+</div>
+
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Insurer Master List</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="insurer_grid"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            // ================================================================
+            // KENDO GRID — Insurers (inline editing)
+            // NO DataSourceRequest / AddKendo() — pure Kendo 2019 jQuery setup.
+            // ================================================================
+            var grid = $("#insurer_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: {
+                            url: '@Url.Action("InsurersRead", "Master")',
+                            type: 'POST'
+                        },
+                        update: {
+                            url: '@Url.Action("InsurersSave", "Master")',
+                            type: 'POST'
+                        },
+                        create: {
+                            url: '@Url.Action("InsurersSave", "Master")',
+                            type: 'POST'
+                        },
+                        destroy: {
+                            url: '@Url.Action("InsurersDelete", "Master")',
+                            type: 'POST'
+                        },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+
+                            if (operation === 'read') {
+                                return $.extend({}, data, { __RequestVerificationToken: token });
+                            }
+
+                            // For create/update/destroy, Kendo sends "models"
+                            // (an array) — we flatten to send the single model
+                            // plus the token, matching our action signatures.
+                            if (data.models && data.models.length > 0) {
+                                return $.extend({}, data.models[0], { __RequestVerificationToken: token });
+                            }
+
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data',
+                        total: 'Total',
+                        errors: 'Errors',
+                        model: {
+                            id: 'InsurerId',
+                            fields: {
+                                InsurerId: { type: 'number', editable: false },
+                                InsurerCode: {
+                                    type: 'string',
+                                    validation: { required: true, maxLength: 10 }
+                                },
+                                InsurerName: {
+                                    type: 'string',
+                                    validation: { required: true, maxLength: 150 }
+                                },
+                                InsurerType: {
+                                    type: 'string',
+                                    defaultValue: 'Both',
+                                    validation: { required: true }
+                                },
+                                ContactPhone: { type: 'string' },
+                                ContactEmail: { type: 'string' },
+                                IsActive: { type: 'boolean', defaultValue: true }
+                            }
+                        }
+                    },
+                    pageSize: 15,
+                    serverPaging: false,
+                    serverSorting: false,
+                    sort: { field: 'InsurerCode', dir: 'asc' },
+                    error: function (e) {
+                        // Surfaces GridError() messages from the controller
+                        var msg = 'An error occurred.';
+                        try {
+                            var parsed = JSON.parse(e.xhr.responseText);
+                            if (parsed.Errors && parsed.Errors.error && parsed.Errors.error.errors) {
+                                msg = parsed.Errors.error.errors[0];
+                            }
+                        } catch (ex) { /* fall back to default message */ }
+
+                        KSwal.error(msg);
+                        this.cancelChanges();
+                    }
+                },
+                pageable: { pageSize: 15, pageSizes: [15, 30, 50] },
+                sortable: true,
+                scrollable: true,
+                height: 520,
+                editable: 'inline',
+                toolbar: [],
+                columns: [
+                    {
+                        field: 'InsurerCode',
+                        title: 'Code',
+                        width: 100
+                    },
+                    {
+                        field: 'InsurerName',
+                        title: 'Insurer Name',
+                        width: 280
+                    },
+                    {
+                        field: 'InsurerType',
+                        title: 'Type',
+                        width: 110,
+                        editor: insurerTypeDropdown,
+                        template: function (item) {
+                            var badgeClass = item.InsurerType === 'Motor' ? 'badge-active'
+                                : item.InsurerType === 'NonMotor' ? 'badge-pending'
+                                : 'badge-status';
+                            return '<span class="badge-status ' + badgeClass + '">' + item.InsurerType + '</span>';
+                        }
+                    },
+                    {
+                        field: 'ContactPhone',
+                        title: 'Phone',
+                        width: 140
+                    },
+                    {
+                        field: 'ContactEmail',
+                        title: 'Email',
+                        width: 220
+                    },
+                    {
+                        field: 'IsActive',
+                        title: 'Active',
+                        width: 90,
+                        template: function (item) {
+                            return item.IsActive
+                                ? '<span class="badge-status badge-active">Yes</span>'
+                                : '<span class="badge-status badge-cancelled">No</span>';
+                        }
+                    },
+                    {
+                        command: ['edit', 'destroy'],
+                        title: 'Actions',
+                        width: 160
+                    }
+                ]
+            }).data("kendoGrid");
+
+            // ================================================================
+            // "Add Insurer" toolbar button — adds a new inline row at the top
+            // ================================================================
+            $("#btnAddInsurer").on("click", function () {
+                grid.addRow();
+            });
+
+            // ================================================================
+            // Custom dropdown editor for InsurerType column
+            // ================================================================
+            function insurerTypeDropdown(container, options) {
+                $('<input required name="' + options.field + '"/>')
+                    .appendTo(container)
+                    .kendoDropDownList({
+                        dataSource: ['Motor', 'NonMotor', 'Both'],
+                        dataValueField: undefined,
+                        dataTextField: undefined,
+                        value: options.model.InsurerType
+                    });
+            }
+
+            // ================================================================
+            // Update record count badge + confirm-delete via KSwal
+            // ================================================================
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            // Intercept the built-in "destroy" command click to show a
+            // KSwal confirmation BEFORE Kendo's default confirm() fires.
+            $("#insurer_grid").on("click", ".k-grid-delete", function (e) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+
+                var row = $(this).closest("tr");
+                var dataItem = grid.dataItem(row);
+
+                KSwal.confirmDelete("Delete insurer '" + dataItem.InsurerName + "'?").then(function (result) {
+                    if (result.isConfirmed) {
+                        grid.removeRow(row);
+                    }
+                });
+            });
+
+        });
+    </script>
+}

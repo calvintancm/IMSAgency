@@ -1,0 +1,187 @@
+﻿@model ImsAgency.Web.Models.IMS.Policy
+@{
+    ViewData["Title"] = "Policy Details - " + Model.CoverNoteNumber;
+    var ledger = Model.PremiumLedger;
+
+    string PolicyBadgeClass(string status) => status switch
+    {
+        "Active" => "badge-active",
+        "Expired" => "badge-expired",
+        "Quoted" or "Draft" => "badge-pending",
+        "Cancelled" => "badge-cancelled",
+        "Lapsed" => "badge-lapsed",
+        _ => "badge-status"
+    };
+
+    var isMotor = Model.PolicyClass?.ClassCategory == "Motor";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            @Model.CoverNoteNumber
+            <span class="badge-status @PolicyBadgeClass(Model.PolicyStatus) ms-2">@Model.PolicyStatus</span>
+            @if (Model.IsRenewal)
+            {
+                <span class="badge-status badge-pending">Renewal</span>
+            }
+        </h1>
+        <p class="page-subtitle">
+            @Model.PolicyClass?.ClassName &middot; @Model.Insurer?.InsurerName
+            @if (!string.IsNullOrEmpty(Model.PolicyNumber))
+            {
+                <span> &middot; Policy No: @Model.PolicyNumber</span>
+            }
+        </p>
+    </div>
+    <div>
+        @if (Model.PolicyStatus is "Draft" or "Quoted" or "Active")
+        {
+            var editAction = isMotor ? "EditMotorPolicy" : "EditNonMotorPolicy";
+            <a href="@Url.Action(editAction, new { id = Model.PolicyId })" class="btn-ptc-outline">
+                <i class="bi bi-pencil"></i> Edit Policy
+            </a>
+        }
+        <a href="@Url.Action(isMotor ? "MotorPolicies" : "NonMotorPolicies")" class="btn-ptc-outline">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 1.4fr 1fr; gap:16px;">
+
+    <!-- ================================================================
+         POLICY INFORMATION
+    ================================================================ -->
+    <div class="ptc-card">
+        <div class="ptc-card-header">
+            <h2 class="ptc-card-title">Policy Information</h2>
+        </div>
+        <div class="ptc-card-body">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px;">
+                <div>
+                    <div class="text-muted small">Client</div>
+                    <div>
+                        <a href="@Url.Action("Profile", "Client", new { id = Model.ClientId })">
+                            @Model.Client?.ClientName
+                        </a>
+                        <div class="small text-muted">@Model.Client?.ClientCode</div>
+                    </div>
+                </div>
+
+                @if (Model.Vehicle != null)
+                {
+                    <div>
+                        <div class="text-muted small">Vehicle</div>
+                        <div>
+                            <strong>@Model.Vehicle.RegistrationNumber</strong>
+                            @if (Model.Vehicle.IsElectricVehicle)
+                            {
+                                <span class="badge-status badge-active"><i class="bi bi-lightning-charge-fill"></i> EV</span>
+                            }
+                            <div class="small text-muted">@Model.Vehicle.MakeAndModel</div>
+                        </div>
+                    </div>
+                }
+
+                <div>
+                    <div class="text-muted small">Policy Period</div>
+                    <div>@Model.StartDate.ToString("dd/MM/yyyy") - @Model.ExpiryDate.ToString("dd/MM/yyyy")</div>
+                </div>
+
+                <div>
+                    <div class="text-muted small">NCD %</div>
+                    <div>@Model.NcdPercentage.ToString("0.##")%</div>
+                </div>
+
+                <div>
+                    <div class="text-muted small">Sum Insured</div>
+                    <div>RM @Model.SumInsured.ToString("N2")</div>
+                </div>
+
+                <div>
+                    <div class="text-muted small">Handling Agent</div>
+                    <div>@(Model.Agent != null ? $"{Model.Agent.AgentCode} - {Model.Agent.FullName}" : "Unassigned")</div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.Remarks))
+                {
+                    <div style="grid-column: span 2;">
+                        <div class="text-muted small">Remarks</div>
+                        <div>@Model.Remarks</div>
+                    </div>
+                }
+            </div>
+
+            <hr />
+            <div class="small text-muted">
+                Created @Model.CreatedAt.ToString("dd/MM/yyyy HH:mm") by @(Model.CreatedBy ?? "—")
+                @if (Model.UpdatedAt.HasValue)
+                {
+                    <br />
+                    @:Last updated @Model.UpdatedAt.Value.ToString("dd/MM/yyyy HH:mm") by @(Model.UpdatedBy ?? "—")
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================
+         PREMIUM BREAKDOWN
+    ================================================================ -->
+    <div class="ptc-card">
+        <div class="ptc-card-header">
+            <h2 class="ptc-card-title"><i class="bi bi-receipt"></i> Premium Breakdown</h2>
+        </div>
+        <div class="ptc-card-body">
+            @if (ledger == null)
+            {
+                <p class="text-muted">No premium information recorded for this policy.</p>
+            }
+            else
+            {
+                <table class="table table-sm mb-0">
+                    <tr><td>Gross Premium</td><td class="text-end">RM @ledger.GrossPremium.ToString("N2")</td></tr>
+                    <tr><td>NCD Discount (@Model.NcdPercentage.ToString("0.##")%)</td><td class="text-end text-danger">- RM @ledger.NcdDiscountAmount.ToString("N2")</td></tr>
+                    <tr style="border-top:1px solid var(--ims-border);"><td><strong>Net Premium</strong></td><td class="text-end"><strong>RM @ledger.NetPremium.ToString("N2")</strong></td></tr>
+
+                    @if (ledger.AddonWindscreen > 0)
+                    {
+                        <tr><td class="small text-muted">+ Windscreen Cover</td><td class="text-end small">RM @ledger.AddonWindscreen.ToString("N2")</td></tr>
+                    }
+                    @if (ledger.AddonSpecialPerils > 0)
+                    {
+                        <tr><td class="small text-muted">+ Special Perils</td><td class="text-end small">RM @ledger.AddonSpecialPerils.ToString("N2")</td></tr>
+                    }
+                    @if (ledger.AddonNamedDriver > 0)
+                    {
+                        <tr><td class="small text-muted">+ Named Driver</td><td class="text-end small">RM @ledger.AddonNamedDriver.ToString("N2")</td></tr>
+                    }
+                    @if (ledger.AddonTotalLoss > 0)
+                    {
+                        <tr><td class="small text-muted">+ Total Loss (SRCC)</td><td class="text-end small">RM @ledger.AddonTotalLoss.ToString("N2")</td></tr>
+                    }
+                    @if (ledger.AddonEvCharger > 0)
+                    {
+                        <tr><td class="small text-muted"><i class="bi bi-lightning-charge-fill text-success"></i> EV Charger Extension</td><td class="text-end small">RM @ledger.AddonEvCharger.ToString("N2")</td></tr>
+                    }
+
+                    <tr><td>Total Add-Ons</td><td class="text-end">RM @ledger.TotalAddonAmount.ToString("N2")</td></tr>
+                    <tr><td>Service Tax (SST 8%)</td><td class="text-end">RM @ledger.ServiceTaxAmount.ToString("N2")</td></tr>
+                    <tr><td>Stamp Duty</td><td class="text-end">RM @ledger.StampDutyAmount.ToString("N2")</td></tr>
+                </table>
+
+                <div class="d-flex justify-content-between align-items-center p-3 rounded mt-2"
+                     style="background:var(--ims-primary-light); border:1px solid var(--ims-primary);">
+                    <span style="font-weight:700; color:var(--ims-primary);">NET PREMIUM PAYABLE</span>
+                    <span style="font-size:22px; font-weight:800; color:var(--ims-primary);">RM @ledger.NetPremiumPayable.ToString("N2")</span>
+                </div>
+
+                @if (ledger.AgentCommission.HasValue && ledger.AgentCommission.Value > 0)
+                {
+                    <div class="text-muted small mt-2">Agent Commission: RM @ledger.AgentCommission.Value.ToString("N2")</div>
+                }
+            }
+        </div>
+    </div>
+
+</div>

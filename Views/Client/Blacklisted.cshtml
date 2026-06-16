@@ -1,0 +1,165 @@
+﻿@{
+    ViewData["Title"] = "Blacklisted Clients";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Blacklisted Clients</h1>
+        <p class="page-subtitle">Clients flagged for fraud, non-payment, or other risk reasons</p>
+    </div>
+</div>
+
+<!-- ================================================================
+     FILTER CARD (search only — small dataset, no type/status needed)
+================================================================ -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns: 2fr auto auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Search</label>
+                <input type="text" id="filterSearchText" class="form-control"
+                       placeholder="Client Code, Name, or NRIC/BRN" />
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+            <div>
+                <button type="button" id="btnClearFilter" class="btn-ptc-outline">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Blacklisted Client List</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="blacklist_grid"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#blacklist_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: {
+                            url: '@Url.Action("BlacklistedRead", "Client")',
+                            type: 'POST'
+                        },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+
+                            if (operation === 'read') {
+                                var sortField = null, sortDir = null;
+                                if (data.sort && data.sort.length > 0) {
+                                    sortField = data.sort[0].field;
+                                    sortDir = data.sort[0].dir;
+                                }
+                                return $.extend({
+                                    page: data.page,
+                                    pageSize: data.pageSize,
+                                    sortField: sortField,
+                                    sortDir: sortDir,
+                                    searchText: $('#filterSearchText').val()
+                                }, { __RequestVerificationToken: token });
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data',
+                        total: 'Total',
+                        errors: 'Errors',
+                        model: {
+                            id: 'ClientId',
+                            fields: {
+                                ClientId: { type: 'number' },
+                                ClientCode: { type: 'string' },
+                                ClientType: { type: 'string' },
+                                ClientName: { type: 'string' },
+                                IdentificationNumber: { type: 'string' },
+                                Remarks: { type: 'string' },
+                                UpdatedAt: { type: 'date' }
+                            }
+                        }
+                    },
+                    pageSize: 15,
+                    serverPaging: true,
+                    serverSorting: true,
+                    sort: { field: 'UpdatedAt', dir: 'desc' }
+                },
+                pageable: { pageSize: 15, pageSizes: [15, 30, 50], info: true },
+                sortable: true,
+                scrollable: true,
+                height: 480,
+                columns: [
+                    { field: 'ClientCode', title: 'Client Code', width: 130 },
+                    { field: 'ClientName', title: 'Name', width: 220 },
+                    { field: 'ClientType', title: 'Type', width: 100 },
+                    { field: 'IdentificationNumber', title: 'NRIC / BRN', width: 150 },
+                    {
+                        field: 'Remarks',
+                        title: 'Remarks / Reason',
+                        template: function (item) {
+                            return '<small>' + (item.Remarks || '—') + '</small>';
+                        }
+                    },
+                    {
+                        title: 'Actions',
+                        width: 150,
+                        template: function (item) {
+                            return '<button type="button" class="btn btn-sm btn-outline-success btn-unblacklist" data-id="' + item.ClientId + '" data-name="' + item.ClientName + '">' +
+                                   '<i class="bi bi-check-circle"></i> Restore</button>';
+                        }
+                    }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+            $('#btnClearFilter').on('click', function () {
+                $('#filterSearchText').val('');
+                grid.dataSource.page(1);
+            });
+            $('#filterSearchText').on('keypress', function (e) {
+                if (e.which === 13) { $('#btnSearch').click(); }
+            });
+
+            // ---- Restore (un-blacklist) ----
+            $("#blacklist_grid").on("click", ".btn-unblacklist", function () {
+                var clientId = $(this).data('id');
+                var clientName = $(this).data('name');
+
+                KSwal.confirm('Restore "' + clientName + '" to the active client list?', 'Restore Client?').then(function (result) {
+                    if (result.isConfirmed) {
+                        $.post('@Url.Action("ToggleBlacklist", "Client")', {
+                            ClientId: clientId,
+                            Reason: 'Restored by agent',
+                            __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                        }).done(function (res) {
+                            if (res.Errors) {
+                                KSwal.error(res.Errors.error.errors[0]);
+                            } else {
+                                KSwal.success('Client restored.');
+                                grid.dataSource.read();
+                            }
+                        });
+                    }
+                });
+            });
+
+        });
+    </script>
+}

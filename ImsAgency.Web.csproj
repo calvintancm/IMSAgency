@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+	<SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+	<SatelliteResourceLanguages Remove="fr;de;zh-Hans;ms;ja" />
     <PackageReference Include="ClosedXML" Version="0.104.2" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.10" />
@@ -33,8 +35,6 @@
   <ItemGroup>
     <Folder Include="Models\Auth\" />
     <Folder Include="Models\ViewModels\" />
-    <Folder Include="Views\Master\" />
-    <Folder Include="Views\Client\" />
     <Folder Include="Views\Claim\" />
     <Folder Include="Views\FinancialReport\" />
     <Folder Include="Views\Security\" />
@@ -42,8 +42,6 @@
     <Folder Include="Views\Report\" />
     <Folder Include="Views\Payment\" />
     <Folder Include="Views\Renewal\" />
-    <Folder Include="Views\Policy\" />
-    <Folder Include="Views\Vehicle\" />
   </ItemGroup>
 
 </Project>

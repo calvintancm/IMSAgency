@@ -174,7 +174,6 @@
     <script>
         // ================================================================
         // CANVAS DONUT CHART HELPER
-        // Draws a simple donut chart from an array of { label, value, color }
         // ================================================================
         function drawDonut(canvasId, slices) {
             var canvas = document.getElementById(canvasId);
@@ -206,13 +205,13 @@
                 startAngle += sliceAngle;
             });
 
-            // Cut out the center to make it a donut
+            // Cut center hole
             ctx.beginPath();
             ctx.arc(cx, cy, innerRadius, 0, Math.PI * 2);
             ctx.fillStyle = '#ffffff';
             ctx.fill();
 
-            // Center text = total count
+            // Center label
             ctx.font = 'bold 20px Segoe UI';
             ctx.fillStyle = '#1f2937';
             ctx.textAlign = 'center';
@@ -237,7 +236,7 @@
             container.innerHTML = html || '<span class="text-muted">No data</span>';
         }
 
-        // ---- Policy Status colors (matches badge-status classes) ----
+        // ---- Policy Status Donut ----
         var statusColorMap = {
             'Active':    '#16a34a',
             'Expired':   '#dc2626',
@@ -250,14 +249,13 @@
         var statusSlices = [
             @foreach (var s in Model.PolicyStatusBreakdown)
             {
-                    @:{ label: '@s.Status', value: @s.Count, color: statusColorMap['@s.Status'] || '#0d6fa4' },
+                @:{ label: '@s.Status', value: @s.Count, color: statusColorMap['@s.Status'] || '#0d6fa4' },
             }
         ];
         drawDonut('statusDonut', statusSlices);
         buildLegend('statusLegend', statusSlices);
 
-           <script>
-        // ---- Motor vs Non-Motor colors ----
+        // ---- Motor vs Non-Motor Donut ----
         var classColorMap = {
             'Motor':    '#0d6fa4',
             'NonMotor': '#16a34a'
@@ -270,7 +268,7 @@
         var classSlices = [
             @foreach (var c in Model.PolicyClassBreakdown)
             {
-                    @:{ label: classLabelMap['@c.ClassCategory'] || '@c.ClassCategory', value: @c.Count, color: classColorMap['@c.ClassCategory'] || '#94a3b8' },
+                @:{ label: classLabelMap['@c.ClassCategory'] || '@c.ClassCategory', value: @c.Count, color: classColorMap['@c.ClassCategory'] || '#94a3b8' },
             }
         ];
         drawDonut('classDonut', classSlices);
@@ -278,7 +276,6 @@
 
         // ================================================================
         // RENEWAL COUNTDOWN RINGS
-        // Each ring shows progress toward 90 days (full circle = 90+ days left)
         // ================================================================
         document.querySelectorAll('.renewal-ring').forEach(function (canvas) {
             var ctx = canvas.getContext('2d');
@@ -288,8 +285,6 @@
             var cy = canvas.height / 2;
             var radius = cx - 4;
 
-            // Progress = how much of the 90-day window has ELAPSED
-            // (closer to expiry = more of the ring filled in the warning color)
             var fraction = Math.max(0, Math.min(1, (90 - days) / 90));
 
             // Background track
@@ -307,7 +302,7 @@
             ctx.lineCap = 'round';
             ctx.stroke();
 
-            // Center text = days left
+            // Center text
             ctx.font = 'bold 13px Segoe UI';
             ctx.fillStyle = '#1f2937';
             ctx.textAlign = 'center';
@@ -316,24 +311,34 @@
         });
 
         // ================================================================
-        // WHATSAPP REMINDER SIMULATOR (Feature 6) — preview only for now.
-        // Full send-and-log functionality wired to RenewalNotices
-        // comes in Step 6.3.
+        // WHATSAPP REMINDER BUTTONS
         // ================================================================
         document.querySelectorAll('.send-reminder-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var clientName = btn.getAttribute('data-client-name');
-                var coverNote = btn.getAttribute('data-cover-note');
-
-                var message = 'Dear ' + clientName + ', your policy ' + coverNote +
+                var coverNote  = btn.getAttribute('data-cover-note');
+                var message    = 'Dear ' + clientName + ', your policy ' + coverNote +
                     ' is expiring soon. Please contact us to renew. — IMS Agency';
 
-                KSwal.confirm(message, 'Send WhatsApp Reminder?').then(function (result) {
+                Swal.fire({
+                    title: 'Send WhatsApp Reminder?',
+                    text: message,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#16a34a',
+                    confirmButtonText: 'Send'
+                }).then(function (result) {
                     if (result.isConfirmed) {
-                        KSwal.success('Reminder preview shown. Full send + logging available in Renewal Pipeline module (Phase 6).');
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Reminder sent!',
+                            text: 'Full send + logging available in the Renewal Pipeline module.',
+                            confirmButtonColor: '#16a34a'
+                        });
                     }
                 });
             });
         });
     </script>
 }
+

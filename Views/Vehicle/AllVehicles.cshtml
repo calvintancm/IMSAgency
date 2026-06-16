@@ -1,0 +1,335 @@
+﻿@model ImsAgency.Web.Models.ViewModels.VehicleListViewModel
+@{
+    ViewData["Title"] = "Vehicle Registry";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Vehicle Registry</h1>
+        <p class="page-subtitle">Motor vehicle asset register</p>
+    </div>
+    <div>
+        <a href="@Url.Action("AddVehicle")" class="btn-ptc-primary">
+            <i class="bi bi-plus-lg"></i> Add Vehicle
+        </a>
+    </div>
+</div>
+
+<!-- ================================================================
+     STAT STRIP
+================================================================ -->
+<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px;">
+    <div class="stat-card">
+        <div class="stat-label"><i class="bi bi-car-front"></i> Total Vehicles</div>
+        <div class="stat-value">@Model.TotalVehicles</div>
+    </div>
+    <div class="stat-card stat-accent">
+        <div class="stat-label"><i class="bi bi-check-circle"></i> Active Vehicles</div>
+        <div class="stat-value">@Model.ActiveVehicles</div>
+    </div>
+    <div class="stat-card stat-accent">
+        <div class="stat-label"><i class="bi bi-lightning-charge"></i> Electric Vehicles</div>
+        <div class="stat-value">@Model.ElectricVehicleCount</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label"><i class="bi bi-file-earmark-check"></i> With Active Policy</div>
+        <div class="stat-value">@Model.VehiclesWithActivePolicy</div>
+    </div>
+</div>
+
+<!-- ================================================================
+     FILTER CARD
+================================================================ -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr auto auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Search</label>
+                <input type="text" id="filterSearchText" class="form-control"
+                       placeholder="Registration No. or Make &amp; Model" />
+            </div>
+            <div>
+                <label class="form-label">Usage</label>
+                <select id="filterUsage" class="form-select">
+                    <option value="All">All</option>
+                    <option value="Private">Private</option>
+                    <option value="EHailing">E-Hailing</option>
+                    <option value="CommercialGoods">Commercial Goods</option>
+                    <option value="CommercialPassenger">Commercial Passenger</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label">EV Only</label>
+                <select id="filterElectric" class="form-select">
+                    <option value="All">All</option>
+                    <option value="Yes">Electric Only</option>
+                    <option value="No">Non-Electric</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Status</label>
+                <select id="filterStatus" class="form-select">
+                    <option value="All">All</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                </select>
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+            <div>
+                <button type="button" id="btnClearFilter" class="btn-ptc-outline">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
+     GRID CARD
+================================================================ -->
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Vehicle List</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="vehicle_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            function getFilters() {
+                return {
+                    searchText: $('#filterSearchText').val(),
+                    vehicleUsage: $('#filterUsage').val(),
+                    isElectric: $('#filterElectric').val(),
+                    status: $('#filterStatus').val()
+                };
+            }
+
+            var grid = $("#vehicle_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: {
+                            url: '@Url.Action("VehiclesRead", "Vehicle")',
+                            type: 'POST'
+                        },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+
+                            if (operation === 'read') {
+                                var sortField = null, sortDir = null;
+                                if (data.sort && data.sort.length > 0) {
+                                    sortField = data.sort[0].field;
+                                    sortDir = data.sort[0].dir;
+                                }
+                                return $.extend({
+                                    page: data.page,
+                                    pageSize: data.pageSize,
+                                    sortField: sortField,
+                                    sortDir: sortDir
+                                }, getFilters(), { __RequestVerificationToken: token });
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data',
+                        total: 'Total',
+                        errors: 'Errors',
+                        model: {
+                            id: 'VehicleId',
+                            fields: {
+                                VehicleId: { type: 'number' },
+                                RegistrationNumber: { type: 'string' },
+                                MakeAndModel: { type: 'string' },
+                                ManufactureYear: { type: 'number' },
+                                EngineCapacityCC: { type: 'number' },
+                                VehicleUsage: { type: 'string' },
+                                IsElectricVehicle: { type: 'boolean' },
+                                VehicleColour: { type: 'string' },
+                                IsActive: { type: 'boolean' },
+                                PolicyCount: { type: 'number' },
+                                HasActivePolicy: { type: 'boolean' }
+                            }
+                        }
+                    },
+                    pageSize: 15,
+                    serverPaging: true,
+                    serverSorting: true,
+                    sort: { field: 'VehicleId', dir: 'desc' },
+                    error: function (e) {
+                        var msg = 'An error occurred.';
+                        try {
+                            var parsed = JSON.parse(e.xhr.responseText);
+                            if (parsed.Errors && parsed.Errors.error && parsed.Errors.error.errors) {
+                                msg = parsed.Errors.error.errors[0];
+                            }
+                        } catch (ex) { }
+                        KSwal.error(msg);
+                    }
+                },
+                pageable: { pageSize: 15, pageSizes: [15, 30, 50], info: true },
+                sortable: true,
+                scrollable: true,
+                height: 540,
+                columns: [
+                    {
+                        field: 'RegistrationNumber',
+                        title: 'Registration No.',
+                        width: 140,
+                        template: function (item) {
+                            var html = '<strong>' + item.RegistrationNumber + '</strong>';
+                            if (item.IsElectricVehicle) {
+                                html += ' <span class="badge-status badge-active" title="Electric Vehicle"><i class="bi bi-lightning-charge-fill"></i> EV</span>';
+                            }
+                            return html;
+                        }
+                    },
+                    {
+                        field: 'MakeAndModel',
+                        title: 'Make & Model',
+                        width: 220
+                    },
+                    {
+                        field: 'ManufactureYear',
+                        title: 'Year',
+                        width: 80
+                    },
+                    {
+                        field: 'EngineCapacityCC',
+                        title: 'Engine (CC)',
+                        width: 100,
+                        template: function (item) {
+                            return item.EngineCapacityCC > 0 ? item.EngineCapacityCC + ' cc' : '<span class="text-muted">—</span>';
+                        }
+                    },
+                    {
+                        field: 'VehicleUsage',
+                        title: 'Usage',
+                        width: 150,
+                        template: function (item) {
+                            var labels = {
+                                Private: 'Private',
+                                EHailing: 'E-Hailing',
+                                CommercialGoods: 'Commercial Goods',
+                                CommercialPassenger: 'Commercial Passenger'
+                            };
+                            return labels[item.VehicleUsage] || item.VehicleUsage;
+                        }
+                    },
+                    {
+                        field: 'VehicleColour',
+                        title: 'Colour',
+                        width: 100,
+                        template: function (item) { return item.VehicleColour || '—'; }
+                    },
+                    {
+                        field: 'PolicyCount',
+                        title: 'Policies',
+                        width: 90,
+                        attributes: { style: 'text-align:center;' },
+                        template: function (item) {
+                            var cls = item.HasActivePolicy ? 'badge-active' : 'badge-status';
+                            return '<span class="badge-status ' + cls + '">' + item.PolicyCount + '</span>';
+                        }
+                    },
+                    {
+                        field: 'IsActive',
+                        title: 'Status',
+                        width: 90,
+                        template: function (item) {
+                            return item.IsActive
+                                ? '<span class="badge-status badge-active">Active</span>'
+                                : '<span class="badge-status badge-cancelled">Inactive</span>';
+                        }
+                    },
+                    {
+                        title: 'Actions',
+                        width: 150,
+                        template: function (item) {
+                            var html = '<a href="@Url.Action("EditVehicle")/' + item.VehicleId + '" class="btn btn-sm btn-outline-secondary" title="Edit"><i class="bi bi-pencil"></i></a> ';
+                            html += '<button type="button" class="btn btn-sm btn-outline-' + (item.IsActive ? 'warning' : 'success') + ' btn-toggle-active" data-id="' + item.VehicleId + '" data-active="' + item.IsActive + '" title="' + (item.IsActive ? 'Deactivate' : 'Activate') + '"><i class="bi bi-' + (item.IsActive ? 'pause-circle' : 'play-circle') + '"></i></button> ';
+                            if (item.PolicyCount === 0) {
+                                html += '<button type="button" class="btn btn-sm btn-outline-danger btn-delete" data-id="' + item.VehicleId + '" data-reg="' + item.RegistrationNumber + '" title="Delete"><i class="bi bi-trash"></i></button>';
+                            }
+                            return html;
+                        }
+                    }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            // ---- Search / Clear ----
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+            $('#btnClearFilter').on('click', function () {
+                $('#filterSearchText').val('');
+                $('#filterUsage').val('All');
+                $('#filterElectric').val('All');
+                $('#filterStatus').val('All');
+                grid.dataSource.page(1);
+            });
+            $('#filterSearchText').on('keypress', function (e) {
+                if (e.which === 13) { $('#btnSearch').click(); }
+            });
+
+            // ---- Toggle Active/Inactive ----
+            $("#vehicle_grid").on("click", ".btn-toggle-active", function () {
+                var vehicleId = $(this).data('id');
+                var isActive = $(this).data('active') === true || $(this).data('active') === 'true';
+                var action = isActive ? 'deactivate' : 'activate';
+
+                KSwal.confirm('Are you sure you want to ' + action + ' this vehicle?', 'Confirm').then(function (result) {
+                    if (result.isConfirmed) {
+                        $.post('@Url.Action("ToggleActive", "Vehicle")', {
+                            VehicleId: vehicleId,
+                            __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                        }).done(function (res) {
+                            if (res.Errors) {
+                                KSwal.error(res.Errors.error.errors[0]);
+                            } else {
+                                KSwal.success('Vehicle ' + action + 'd.');
+                                grid.dataSource.read();
+                            }
+                        });
+                    }
+                });
+            });
+
+            // ---- Delete ----
+            $("#vehicle_grid").on("click", ".btn-delete", function () {
+                var vehicleId = $(this).data('id');
+                var reg = $(this).data('reg');
+
+                KSwal.confirmDelete("Delete vehicle '" + reg + "'?").then(function (result) {
+                    if (result.isConfirmed) {
+                        $.post('@Url.Action("DeleteVehicle", "Vehicle")', {
+                            VehicleId: vehicleId,
+                            __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                        }).done(function (res) {
+                            if (res.Errors) {
+                                KSwal.error(res.Errors.error.errors[0]);
+                            } else {
+                                KSwal.success('Vehicle deleted.');
+                                grid.dataSource.read();
+                            }
+                        });
+                    }
+                });
+            });
+
+        });
+    </script>
+}

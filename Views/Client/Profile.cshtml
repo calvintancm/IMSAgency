@@ -1,0 +1,336 @@
+﻿@model ImsAgency.Web.Models.ViewModels.ClientProfileViewModel
+@{
+    ViewData["Title"] = "Client Profile - " + Model.ClientName;
+
+    string PolicyBadgeClass(string status) => status switch
+    {
+        "Active" => "badge-active",
+        "Expired" => "badge-expired",
+        "Quoted" or "Draft" => "badge-pending",
+        "Cancelled" => "badge-cancelled",
+        "Lapsed" => "badge-lapsed",
+        _ => "badge-status"
+    };
+
+    string ClaimBadgeClass(string status) => status switch
+    {
+        "Approved" or "Closed" => "badge-active",
+        "Rejected" => "badge-expired",
+        _ => "badge-pending" // Lodged, InProgress
+    };
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            @Model.ClientName
+            @if (Model.IsBlacklisted)
+            {
+                <span class="badge-status badge-expired ms-2">Blacklisted</span>
+            }
+            else if (!Model.IsActive)
+            {
+                <span class="badge-status badge-cancelled ms-2">Inactive</span>
+            }
+        </h1>
+        <p class="page-subtitle">
+            @Model.ClientCode &middot; @Model.ClientType &middot; @Model.IdentificationType: @Model.IdentificationNumber
+        </p>
+    </div>
+    <div>
+        <a href="@Url.Action("EditClient", new { id = Model.ClientId })" class="btn-ptc-outline">
+            <i class="bi bi-pencil"></i> Edit Client
+        </a>
+        <a href="@Url.Action("AllClients")" class="btn-ptc-outline">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<!-- ================================================================
+     LIFETIME VALUE STAT STRIP
+================================================================ -->
+<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px;">
+    <div class="stat-card stat-accent">
+        <div class="stat-label"><i class="bi bi-cash-stack"></i> Lifetime Premium Collected</div>
+        <div class="stat-value">RM @Model.TotalPremiumCollected.ToString("N2")</div>
+    </div>
+    <div class="stat-card @(Model.TotalOutstandingBalance > 0 ? "stat-warning" : "stat-accent")">
+        <div class="stat-label"><i class="bi bi-exclamation-circle"></i> Outstanding Balance</div>
+        <div class="stat-value">RM @Model.TotalOutstandingBalance.ToString("N2")</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label"><i class="bi bi-file-earmark-check"></i> Active Policies</div>
+        <div class="stat-value">@Model.ActivePolicyCount</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label"><i class="bi bi-clock-history"></i> Total Policies (All-Time)</div>
+        <div class="stat-value">@Model.TotalPolicyCount</div>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px;">
+
+    <!-- ================================================================
+         CONTACT INFO
+    ================================================================ -->
+    <div class="ptc-card">
+        <div class="ptc-card-header">
+            <h2 class="ptc-card-title">Contact Information</h2>
+        </div>
+        <div class="ptc-card-body">
+            <p class="mb-2"><strong>Phone Numbers</strong></p>
+            @if (!Model.Phones.Any())
+            {
+                <p class="text-muted small">No phone numbers on record.</p>
+            }
+            else
+            {
+                @foreach (var phone in Model.Phones)
+                {
+                    var typeLabel = phone.PhoneType switch { "M" => "Mobile", "H" => "Home", "O" => "Office", "F" => "Fax", _ => phone.PhoneType };
+                    <div class="mb-1">
+                        <i class="bi bi-telephone"></i> @phone.PhoneNumber
+                        <span class="text-muted small">(@typeLabel)</span>
+                        @if (phone.IsPrimary)
+                        {
+                            <span class="badge-status badge-active">Primary</span>
+                        }
+                        @if (phone.IsWhatsApp)
+                        {
+                            <i class="bi bi-whatsapp text-success ms-1" title="WhatsApp reachable"></i>
+                        }
+                    </div>
+                }
+            }
+
+            @if (!string.IsNullOrEmpty(Model.EmailAddress))
+            {
+                <div class="mt-2"><i class="bi bi-envelope"></i> @Model.EmailAddress</div>
+            }
+
+            <hr />
+
+            <p class="mb-2"><strong>Addresses</strong></p>
+            @if (!Model.Addresses.Any())
+            {
+                <p class="text-muted small">No addresses on record.</p>
+            }
+            else
+            {
+                @foreach (var addr in Model.Addresses)
+                {
+                    <div class="mb-2">
+                        <span class="badge-status badge-status">@addr.AddressType</span>
+                        @if (addr.IsPrimary)
+                        {
+                            <span class="badge-status badge-active">Primary</span>
+                        }
+                        <div class="small mt-1">
+                            @addr.AddressLine1@(string.IsNullOrEmpty(addr.AddressLine2) ? "" : ", " + addr.AddressLine2)<br />
+                            @addr.City, @addr.Postcode, @addr.State
+                        </div>
+                    </div>
+                }
+            }
+
+            @if (!string.IsNullOrEmpty(Model.OccupationOrBusiness))
+            {
+                <hr />
+                <p class="mb-0 small"><strong>@(Model.ClientType == "Company" ? "Business Nature" : "Occupation")</strong>: @Model.OccupationOrBusiness</p>
+            }
+
+            @if (!string.IsNullOrEmpty(Model.Remarks))
+            {
+                <hr />
+                <p class="mb-0 small"><strong>Remarks</strong>: @Model.Remarks</p>
+            }
+        </div>
+    </div>
+
+    <!-- ================================================================
+         RENEWAL NOTICE LOG
+    ================================================================ -->
+    <div class="ptc-card">
+        <div class="ptc-card-header">
+            <h2 class="ptc-card-title">Renewal Notice Log</h2>
+            <span class="record-count-badge">@Model.RenewalNotices.Count records</span>
+        </div>
+        <div class="ptc-card-body" style="padding:0; max-height:340px; overflow-y:auto;">
+            @if (!Model.RenewalNotices.Any())
+            {
+                <div class="p-4 text-center text-muted">No renewal notices sent yet.</div>
+            }
+            else
+            {
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr><th>Cover Note</th><th>Type</th><th>Channel</th><th>Sent</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var notice in Model.RenewalNotices)
+                        {
+                            <tr>
+                                <td>@notice.CoverNoteNumber</td>
+                                <td>@notice.NoticeType</td>
+                                <td><i class="bi bi-@(notice.Channel == "WhatsApp" ? "whatsapp" : "envelope")"></i> @notice.Channel</td>
+                                <td>@notice.SentAt.ToString("dd/MM/yyyy")</td>
+                                <td>
+                                    @if (notice.IsDelivered)
+                                    {
+                                        <span class="badge-status badge-active">Delivered</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-status badge-pending">Pending</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+</div>
+
+<!-- ================================================================
+     POLICY TIMELINE
+================================================================ -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Policy History</h2>
+        <span class="record-count-badge">@Model.Policies.Count policies</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        @if (!Model.Policies.Any())
+        {
+            <div class="p-4 text-center text-muted">No policies on record for this client yet.</div>
+        }
+        else
+        {
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Cover Note</th>
+                        <th>Class</th>
+                        <th>Vehicle / Insurer</th>
+                        <th>Period</th>
+                        <th>Premium</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model.Policies)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@p.CoverNoteNumber</strong>
+                                @if (p.IsRenewal)
+                                {
+                                    <br />
+                                    <span class="text-muted small">Renewal</span>
+         }
+                            </td>
+                            <td>@p.PolicyClassName</td>
+                            <td>
+                                @(p.RegistrationNumber ?? "—")<br />
+                                <span class="text-muted small">@p.InsurerName</span>
+                            </td>
+                            <td>
+                                @p.StartDate.ToString("dd/MM/yyyy") - @p.ExpiryDate.ToString("dd/MM/yyyy")
+                            </td>
+                            <td>RM @p.NetPremiumPayable.ToString("N2")</td>
+                            <td><span class="badge-status @PolicyBadgeClass(p.PolicyStatus)">@p.PolicyStatus</span></td>
+                            <td>
+                                <a href="@Url.Action("Details", "Policy", new { id = p.PolicyId })" class="btn btn-sm btn-outline-primary" title="View Policy">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+
+    <!-- ================================================================
+         PAYMENT HISTORY
+    ================================================================ -->
+    <div class="ptc-card">
+        <div class="ptc-card-header">
+            <h2 class="ptc-card-title">Payment History</h2>
+            <span class="record-count-badge">@Model.Payments.Count records</span>
+        </div>
+        <div class="ptc-card-body" style="padding:0; max-height:320px; overflow-y:auto;">
+            @if (!Model.Payments.Any())
+            {
+                <div class="p-4 text-center text-muted">No payments recorded yet.</div>
+            }
+            else
+            {
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr><th>Receipt</th><th>Cover Note</th><th>Date</th><th>Method</th><th class="text-end">Amount</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var pay in Model.Payments)
+                        {
+                            <tr>
+                                <td>@pay.ReceiptNumber</td>
+                                <td>@pay.CoverNoteNumber</td>
+                                <td>@pay.PaymentDate.ToString("dd/MM/yyyy")</td>
+                                <td>@pay.PaymentMethod</td>
+                                <td class="text-end">RM @pay.AmountPaid.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    <!-- ================================================================
+         CLAIMS HISTORY
+    ================================================================ -->
+    <div class="ptc-card">
+        <div class="ptc-card-header">
+            <h2 class="ptc-card-title">Claims History</h2>
+            <span class="record-count-badge">@Model.Claims.Count records</span>
+        </div>
+        <div class="ptc-card-body" style="padding:0; max-height:320px; overflow-y:auto;">
+            @if (!Model.Claims.Any())
+            {
+                <div class="p-4 text-center text-muted">No claims filed.</div>
+            }
+            else
+            {
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr><th>Claim Ref</th><th>Cover Note</th><th>Date</th><th>Type</th><th>Status</th><th class="text-end">Amount</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var claim in Model.Claims)
+                        {
+                            var amount = claim.ApprovedClaimAmount ?? claim.EstimatedLossAmount;
+                            <tr>
+                                <td>@claim.ClaimReferenceNumber</td>
+                                <td>@claim.CoverNoteNumber</td>
+                                <td>@claim.ClaimDate.ToString("dd/MM/yyyy")</td>
+                                <td>@claim.ClaimType</td>
+                                <td><span class="badge-status @ClaimBadgeClass(claim.ClaimStatus)">@claim.ClaimStatus</span></td>
+                                <td class="text-end">@(amount.HasValue ? "RM " + amount.Value.ToString("N2") : "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+</div>

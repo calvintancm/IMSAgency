@@ -1,0 +1,149 @@
+﻿@{
+    ViewData["Title"] = "Policy Classes";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Policy Classes</h1>
+        <p class="page-subtitle">Insurance product types (Motor &amp; Non-Motor)</p>
+    </div>
+    <div>
+        <button type="button" id="btnAddClass" class="btn-ptc-primary">
+            <i class="bi bi-plus-lg"></i> Add Policy Class
+        </button>
+    </div>
+</div>
+
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Policy Class Master List</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="policyclass_grid"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#policyclass_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: { url: '@Url.Action("PolicyClassesRead", "Master")', type: 'POST' },
+                        update: { url: '@Url.Action("PolicyClassesSave", "Master")', type: 'POST' },
+                        create: { url: '@Url.Action("PolicyClassesSave", "Master")', type: 'POST' },
+                        destroy: { url: '@Url.Action("PolicyClassesDelete", "Master")', type: 'POST' },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+
+                            if (operation === 'read') {
+                                return $.extend({}, data, { __RequestVerificationToken: token });
+                            }
+                            if (data.models && data.models.length > 0) {
+                                return $.extend({}, data.models[0], { __RequestVerificationToken: token });
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data',
+                        total: 'Total',
+                        errors: 'Errors',
+                        model: {
+                            id: 'PolicyClassId',
+                            fields: {
+                                PolicyClassId: { type: 'number', editable: false },
+                                ClassCode: { type: 'string', validation: { required: true, maxLength: 20 } },
+                                ClassName: { type: 'string', validation: { required: true, maxLength: 100 } },
+                                ClassCategory: { type: 'string', defaultValue: 'Motor', validation: { required: true } },
+                                DisplayOrder: { type: 'number', defaultValue: 0, validation: { min: 0 } },
+                                IsActive: { type: 'boolean', defaultValue: true }
+                            }
+                        }
+                    },
+                    pageSize: 15,
+                    serverPaging: false,
+                    serverSorting: false,
+                    sort: { field: 'DisplayOrder', dir: 'asc' },
+                    error: function (e) {
+                        var msg = 'An error occurred.';
+                        try {
+                            var parsed = JSON.parse(e.xhr.responseText);
+                            if (parsed.Errors && parsed.Errors.error && parsed.Errors.error.errors) {
+                                msg = parsed.Errors.error.errors[0];
+                            }
+                        } catch (ex) { }
+                        KSwal.error(msg);
+                        this.cancelChanges();
+                    }
+                },
+                pageable: { pageSize: 15, pageSizes: [15, 30, 50] },
+                sortable: true,
+                scrollable: true,
+                height: 520,
+                editable: 'inline',
+                toolbar: [],
+                columns: [
+                    { field: 'ClassCode', title: 'Class Code', width: 110 },
+                    { field: 'ClassName', title: 'Class Name', width: 260 },
+                    {
+                        field: 'ClassCategory',
+                        title: 'Category',
+                        width: 110,
+                        editor: classCategoryDropdown,
+                        template: function (item) {
+                            var badgeClass = item.ClassCategory === 'Motor' ? 'badge-active' : 'badge-pending';
+                            var label = item.ClassCategory === 'Motor' ? 'Motor' : 'Non-Motor';
+                            return '<span class="badge-status ' + badgeClass + '">' + label + '</span>';
+                        }
+                    },
+                    { field: 'DisplayOrder', title: 'Order', width: 80 },
+                    {
+                        field: 'IsActive',
+                        title: 'Active',
+                        width: 90,
+                        template: function (item) {
+                            return item.IsActive
+                                ? '<span class="badge-status badge-active">Yes</span>'
+                                : '<span class="badge-status badge-cancelled">No</span>';
+                        }
+                    },
+                    { command: ['edit', 'destroy'], title: 'Actions', width: 160 }
+                ]
+            }).data("kendoGrid");
+
+            $("#btnAddClass").on("click", function () {
+                grid.addRow();
+            });
+
+            function classCategoryDropdown(container, options) {
+                $('<input required name="' + options.field + '"/>')
+                    .appendTo(container)
+                    .kendoDropDownList({
+                        dataSource: ['Motor', 'NonMotor'],
+                        value: options.model.ClassCategory
+                    });
+            }
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $("#policyclass_grid").on("click", ".k-grid-delete", function (e) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                var row = $(this).closest("tr");
+                var dataItem = grid.dataItem(row);
+
+                KSwal.confirmDelete("Delete policy class '" + dataItem.ClassName + "'?").then(function (result) {
+                    if (result.isConfirmed) {
+                        grid.removeRow(row);
+                    }
+                });
+            });
+
+        });
+    </script>
+}

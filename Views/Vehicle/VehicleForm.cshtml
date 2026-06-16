@@ -1,0 +1,245 @@
+﻿@model ImsAgency.Web.Models.ViewModels.VehicleFormViewModel
+@using Microsoft.AspNetCore.Html
+@{
+    ViewData["Title"] = Model.VehicleId == 0 ? "Add Vehicle" : "Edit Vehicle";
+    var isNew = Model.VehicleId == 0;
+
+    // Fix 1: wrap the cast in parentheses to help Razor parse List<string>
+    var vehicleMakes = (ViewBag.VehicleMakes as List<string>) ?? new List<string>();
+
+    // Fix 2: helper avoids ternary-inside-attribute Razor parsing errors
+    Func<string, string, IHtmlContent> Sel = (val, match) =>
+        val == match ? new HtmlString("selected=\"selected\"") : HtmlString.Empty;
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">@(isNew ? "Add Vehicle" : "Edit Vehicle")</h1>
+        <p class="page-subtitle">
+            @if (isNew)
+            {
+                @:Register a new vehicle in the asset register
+            }
+            else
+            {
+                <span>Registration: <strong>@Model.RegistrationNumber</strong></span>
+            }
+        </p>
+    </div>
+    <div>
+        <a href="@Url.Action("AllVehicles")" class="btn-ptc-outline">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+<input type="hidden" id="vehicleId" value="@Model.VehicleId" />
+
+<!-- EV DETECTION BANNER (Feature 3) -->
+<div id="evBanner" class="alert alert-success d-flex align-items-center gap-2 mb-3"
+     style="display:@(Model.IsElectricVehicle ? "flex" : "none"); border-left:4px solid var(--ims-accent);">
+    <i class="bi bi-lightning-charge-fill" style="font-size:20px;"></i>
+    <div>
+        <strong>⚡ Electric Vehicle detected.</strong>
+        Recommend the <strong>EV Charger Extension</strong> add-on when creating a policy for this vehicle —
+        available in the Malaysian Premium Calculator under Add-Ons.
+    </div>
+</div>
+
+<div class="ptc-card mb-3">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Vehicle Details</h2>
+    </div>
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px;">
+
+            <div>
+                <label class="form-label">Registration Number <span class="text-danger">*</span></label>
+                <input type="text" id="RegistrationNumber" class="form-control"
+                       value="@Model.RegistrationNumber"
+                       placeholder="e.g. WXY 1234"
+                       style="text-transform:uppercase;" />
+            </div>
+
+            <div>
+                <label class="form-label">Quick-fill Make</label>
+                <select id="quickMake" class="form-select">
+                    <option value="">— Select to prefix Make &amp; Model —</option>
+                    @foreach (var make in vehicleMakes)
+                    {
+                        <option value="@make">@make</option>
+                    }
+                </select>
+            </div>
+
+            <div>
+                <label class="form-label">Make &amp; Model <span class="text-danger">*</span></label>
+                <input type="text" id="MakeAndModel" class="form-control"
+                       value="@Model.MakeAndModel"
+                       placeholder="e.g. Toyota Vios 1.5E" />
+            </div>
+
+            <div>
+                <label class="form-label">Manufacture Year <span class="text-danger">*</span></label>
+                <input type="number" id="ManufactureYear" class="form-control"
+                       value="@Model.ManufactureYear" min="1950" max="2100" />
+            </div>
+
+            <div>
+                <label class="form-label">Engine Capacity (CC) <span class="text-danger">*</span></label>
+                <input type="number" id="EngineCapacityCC" class="form-control"
+                       value="@Model.EngineCapacityCC" min="0"
+                       placeholder="0 for Electric Vehicles" />
+            </div>
+
+            <div>
+                <label class="form-label">Seating Capacity</label>
+                <input type="number" id="SeatingCapacity" class="form-control"
+                       value="@Model.SeatingCapacity" min="1" />
+            </div>
+
+            <div>
+                <label class="form-label">Vehicle Usage <span class="text-danger">*</span></label>
+                <select id="VehicleUsage" class="form-select">
+                    <option value="Private" @@Sel(Model.VehicleUsage, "Private")>Private</option>
+                    <option value="EHailing" @@Sel(Model.VehicleUsage, "EHailing")>E-Hailing</option>
+                    <option value="CommercialGoods" @@Sel(Model.VehicleUsage, "CommercialGoods")>Commercial Goods</option>
+                    <option value="CommercialPassenger" @@Sel(Model.VehicleUsage, "CommercialPassenger")>Commercial Passenger</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="form-label">Colour</label>
+                <input type="text" id="VehicleColour" class="form-control"
+                       value="@Model.VehicleColour" />
+            </div>
+
+            <div>
+                <label class="form-label">Market / Agreed Value (RM)</label>
+                <input type="number" id="MarketValue" class="form-control"
+                       value="@Model.MarketValue" min="0" step="0.01" />
+                <small class="text-muted">Used as default Sum Insured when creating a policy</small>
+            </div>
+
+            <div>
+                <label class="form-label">Engine Number</label>
+                <input type="text" id="EngineNumber" class="form-control"
+                       value="@Model.EngineNumber" />
+            </div>
+
+            <div>
+                <label class="form-label">Chassis Number</label>
+                <input type="text" id="ChassisNumber" class="form-control"
+                       value="@Model.ChassisNumber" />
+            </div>
+
+            <div>
+                <label class="form-label">Status</label>
+                <select id="IsActive" class="form-select">
+                    <option value="true" @@Sel(Model.IsActive.ToString().ToLower(), "true")>Active</option>
+                    <option value="false" @@Sel(Model.IsActive.ToString().ToLower(), "false")>Inactive</option>
+                </select>
+            </div>
+
+            <div style="grid-column: span 3;">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="IsElectricVehicle"
+                           @(Model.IsElectricVehicle ? "checked" : "") />
+                    <label class="form-check-label" for="IsElectricVehicle">
+                        <i class="bi bi-lightning-charge-fill text-success"></i>
+                        This is an Electric Vehicle (EV)
+                    </label>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="mt-3">
+            <button type="button" id="btnSaveVehicle" class="btn-ptc-primary">
+                <i class="bi bi-save"></i> @(isNew ? "Create Vehicle" : "Save Changes")
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    $(document).ready(function () {
+
+        // EV Banner toggle (Feature 3)
+        function toggleEvBanner() {
+            if ($('#IsElectricVehicle').is(':checked')) {
+                $('#evBanner').slideDown(150);
+                if (!$('#EngineCapacityCC').val() || $('#EngineCapacityCC').val() === '0') {
+                    $('#EngineCapacityCC').val(0);
+                }
+            } else {
+                $('#evBanner').slideUp(150);
+            }
+        }
+        $('#IsElectricVehicle').on('change', toggleEvBanner);
+
+        // Quick-fill Make prefix helper
+        $('#quickMake').on('change', function () {
+            var make = $(this).val();
+            if (!make) return;
+
+            var current = $('#MakeAndModel').val().trim();
+            if (!current) {
+                $('#MakeAndModel').val(make + ' ').focus();
+            } else if (current.toLowerCase().indexOf(make.toLowerCase()) !== 0) {
+                $('#MakeAndModel').val(make + ' ' + current).focus();
+            } else {
+                $('#MakeAndModel').focus();
+            }
+            $(this).val('');
+        });
+
+        // Auto-uppercase Registration Number on blur
+        $('#RegistrationNumber').on('blur', function () {
+            $(this).val($(this).val().toUpperCase().trim());
+        });
+
+        // Save Vehicle (AJAX)
+        $('#btnSaveVehicle').on('click', function () {
+            var payload = {
+                VehicleId: $('#vehicleId').val(),
+                RegistrationNumber: $('#RegistrationNumber').val().toUpperCase().trim(),
+                MakeAndModel: $('#MakeAndModel').val(),
+                ManufactureYear: $('#ManufactureYear').val(),
+                EngineNumber: $('#EngineNumber').val(),
+                ChassisNumber: $('#ChassisNumber').val(),
+                EngineCapacityCC: $('#EngineCapacityCC').val() || 0,
+                SeatingCapacity: $('#SeatingCapacity').val() || 5,
+                VehicleUsage: $('#VehicleUsage').val(),
+                IsElectricVehicle: $('#IsElectricVehicle').is(':checked'),
+                VehicleColour: $('#VehicleColour').val(),
+                MarketValue: $('#MarketValue').val() || null,
+                IsActive: $('#IsActive').val(),
+                __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+            };
+
+            if (!payload.RegistrationNumber || !payload.MakeAndModel) {
+                KSwal.warning('Registration Number and Make & Model are required.');
+                return;
+            }
+
+            $.post('@Url.Action("SaveVehicle", "Vehicle")', payload)
+                .done(function (res) {
+                    if (res.success) {
+                        KSwal.success(res.message).then(function () {
+                            window.location.href = res.redirectUrl;
+                        });
+                    } else {
+                        KSwal.error(res.message);
+                    }
+                })
+                .fail(function () {
+                    KSwal.error('An unexpected error occurred while saving.');
+                });
+        });
+
+    });
+</script>
+}

@@ -1,0 +1,135 @@
+﻿@{
+    ViewData["Title"] = "NCD Rates";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">NCD Rates</h1>
+        <p class="page-subtitle">Malaysian No-Claim Discount tariff table</p>
+    </div>
+    <div>
+        <button type="button" id="btnAddRate" class="btn-ptc-primary">
+            <i class="bi bi-plus-lg"></i> Add NCD Rate
+        </button>
+    </div>
+</div>
+
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">NCD Rate Table</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="ncdrate_grid"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#ncdrate_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: { url: '@Url.Action("NcdRatesRead", "Master")', type: 'POST' },
+                        update: { url: '@Url.Action("NcdRatesSave", "Master")', type: 'POST' },
+                        create: { url: '@Url.Action("NcdRatesSave", "Master")', type: 'POST' },
+                        destroy: { url: '@Url.Action("NcdRatesDelete", "Master")', type: 'POST' },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+
+                            if (operation === 'read') {
+                                return $.extend({}, data, { __RequestVerificationToken: token });
+                            }
+                            if (data.models && data.models.length > 0) {
+                                return $.extend({}, data.models[0], { __RequestVerificationToken: token });
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data',
+                        total: 'Total',
+                        errors: 'Errors',
+                        model: {
+                            id: 'NcdRateId',
+                            fields: {
+                                NcdRateId: { type: 'number', editable: false },
+                                ClaimFreeYears: { type: 'number', validation: { required: true, min: 1, max: 5 } },
+                                NcdPercentage: { type: 'number', validation: { required: true, min: 0, max: 100 } },
+                                EffectiveYear: { type: 'number', validation: { required: true, min: 2000, max: 2100 } }
+                            }
+                        }
+                    },
+                    pageSize: 15,
+                    serverPaging: false,
+                    serverSorting: false,
+                    sort: [
+                        { field: 'EffectiveYear', dir: 'desc' },
+                        { field: 'ClaimFreeYears', dir: 'asc' }
+                    ],
+                    error: function (e) {
+                        var msg = 'An error occurred.';
+                        try {
+                            var parsed = JSON.parse(e.xhr.responseText);
+                            if (parsed.Errors && parsed.Errors.error && parsed.Errors.error.errors) {
+                                msg = parsed.Errors.error.errors[0];
+                            }
+                        } catch (ex) { }
+                        KSwal.error(msg);
+                        this.cancelChanges();
+                    }
+                },
+                pageable: { pageSize: 15, pageSizes: [15, 30, 50] },
+                sortable: true,
+                scrollable: true,
+                height: 480,
+                editable: 'inline',
+                toolbar: [],
+                columns: [
+                    {
+                        field: 'ClaimFreeYears',
+                        title: 'Claim-Free Years',
+                        width: 150,
+                        template: function (item) {
+                            return item.ClaimFreeYears >= 5 ? '5 or more' : item.ClaimFreeYears;
+                        }
+                    },
+                    {
+                        field: 'NcdPercentage',
+                        title: 'NCD %',
+                        width: 120,
+                        template: function (item) {
+                            return '<strong>' + parseFloat(item.NcdPercentage).toFixed(2) + '%</strong>';
+                        },
+                        attributes: { style: 'text-align:right;' }
+                    },
+                    { field: 'EffectiveYear', title: 'Effective Year', width: 130 },
+                    { command: ['edit', 'destroy'], title: 'Actions', width: 160 }
+                ]
+            }).data("kendoGrid");
+
+            $("#btnAddRate").on("click", function () {
+                grid.addRow();
+            });
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $("#ncdrate_grid").on("click", ".k-grid-delete", function (e) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                var row = $(this).closest("tr");
+                var dataItem = grid.dataItem(row);
+
+                KSwal.confirmDelete("Delete NCD rate for " + dataItem.ClaimFreeYears + " claim-free year(s) in " + dataItem.EffectiveYear + "?").then(function (result) {
+                    if (result.isConfirmed) {
+                        grid.removeRow(row);
+                    }
+                });
+            });
+
+        });
+    </script>
+}

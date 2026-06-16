@@ -67,7 +67,8 @@ namespace ImsAgency.Web.Models.IMS
         // ---- Navigation ----
         public ICollection<ClientPhone> ClientPhones { get; set; } = new List<ClientPhone>();
         public ICollection<ClientAddress> ClientAddresses { get; set; } = new List<ClientAddress>();
-        //public ICollection<Policy> Policies { get; set; } = new List<Policy>();
-        //public ICollection<CustomerPaymentLedger> CustomerPaymentLedgers { get; set; } = new List<CustomerPaymentLedger>();
+        public ICollection<Policy> Policies { get; set; } = new List<Policy>();
+      
+        public ICollection<CustomerPaymentLedger> CustomerPaymentLedgers { get; set; } = new List<CustomerPaymentLedger>();
     }
 }
