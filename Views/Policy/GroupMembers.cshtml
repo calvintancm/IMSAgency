@@ -1,0 +1,192 @@
+﻿@{
+    ViewData["Title"] = "Group Members";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Group Policy Members</h1>
+        <p class="page-subtitle">
+            All covered workers across FWHS, PA Group, and Medical Group policies
+        </p>
+    </div>
+</div>
+
+<!-- FILTER CARD -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:2fr auto auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Search</label>
+                <input type="text" id="filterSearchText" class="form-control"
+                       placeholder="Employee name, Passport/NRIC, Cover Note, or Client" />
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+            <div>
+                <button type="button" id="btnClearFilter" class="btn-ptc-outline">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GRID CARD -->
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Group Member Register</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="groupmembers_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#groupmembers_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: {
+                            url  : '@Url.Action("GroupMembersRead", "Policy")',
+                            type : 'POST'
+                        },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                var sf = null, sd = null;
+                                if (data.sort && data.sort.length > 0) {
+                                    sf = data.sort[0].field;
+                                    sd = data.sort[0].dir;
+                                }
+                                return $.extend({
+                                    page: data.page, pageSize: data.pageSize,
+                                    sortField: sf, sortDir: sd,
+                                    searchText: $('#filterSearchText').val()
+                                }, { __RequestVerificationToken: token });
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'EmployeeLinkId',
+                            fields: {
+                                EmployeeLinkId : { type: 'number' },
+                                PolicyId       : { type: 'number' },
+                                CoverNoteNumber: { type: 'string' },
+                                ClientName     : { type: 'string' },
+                                EmployeeName   : { type: 'string' },
+                                PassportOrNric : { type: 'string' },
+                                Gender         : { type: 'string' },
+                                NationalityCode: { type: 'string' },
+                                DateOfBirth    : { type: 'date' },
+                                Occupation     : { type: 'string' },
+                                AnnualWage     : { type: 'number' },
+                                IsActive       : { type: 'boolean' }
+                            }
+                        }
+                    },
+                    pageSize: 20,
+                    serverPaging: true, serverSorting: true,
+                    sort: { field: 'EmployeeName', dir: 'asc' }
+                },
+                pageable: { pageSize: 20, pageSizes: [20, 50, 100], info: true },
+                sortable: true, scrollable: true, height: 560,
+                columns: [
+                    {
+                        field: 'CoverNoteNumber',
+                        title: 'Policy',
+                        width: 160,
+                        template: function (item) {
+                            return '<a href="@Url.Action("EditNonMotorPolicy")/'
+                                + item.PolicyId + '" class="text-decoration-none">'
+                                + kendo.htmlEncode(item.CoverNoteNumber) + '</a>'
+                                + '<br/><small class="text-muted">'
+                                + kendo.htmlEncode(item.ClientName) + '</small>';
+                        }
+                    },
+                    { field: 'EmployeeName',   title: 'Employee Name',   width: 200 },
+                    { field: 'PassportOrNric', title: 'Passport / NRIC', width: 140 },
+                    {
+                        field: 'Gender',
+                        title: 'Gender',
+                        width: 80,
+                        template: function (item) {
+                            return item.Gender === 'M' ? 'Male' : 'Female';
+                        }
+                    },
+                    {
+                        field: 'NationalityCode',
+                        title: 'Nationality',
+                        width: 100,
+                        template: function (item) {
+                            return item.NationalityCode || '—';
+                        }
+                    },
+                    {
+                        field: 'DateOfBirth',
+                        title: 'Date of Birth',
+                        width: 120,
+                        template: function (item) {
+                            return item.DateOfBirth
+                                ? kendo.toString(kendo.parseDate(item.DateOfBirth), 'dd/MM/yyyy')
+                                : '—';
+                        }
+                    },
+                    {
+                        field: 'Occupation',
+                        title: 'Occupation',
+                        width: 160,
+                        template: function (item) {
+                            return kendo.htmlEncode(item.Occupation || '—');
+                        }
+                    },
+                    {
+                        field: 'AnnualWage',
+                        title: 'Annual Wage',
+                        width: 120,
+                        attributes: { style: 'text-align:right;' },
+                        template: function (item) {
+                            return item.AnnualWage
+                                ? 'RM ' + parseFloat(item.AnnualWage).toFixed(2)
+                                : '—';
+                        }
+                    },
+                    {
+                        field: 'IsActive',
+                        title: 'Active',
+                        width: 80,
+                        template: function (item) {
+                            return item.IsActive
+                                ? '<span class="badge-status badge-active">Yes</span>'
+                                : '<span class="badge-status badge-cancelled">No</span>';
+                        }
+                    }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+            $('#btnClearFilter').on('click', function () {
+                $('#filterSearchText').val('');
+                grid.dataSource.page(1);
+            });
+            $('#filterSearchText').on('keypress', function (e) {
+                if (e.which === 13) { $('#btnSearch').click(); }
+            });
+
+        });
+    </script>
+}

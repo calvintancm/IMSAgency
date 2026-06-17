@@ -1,0 +1,144 @@
+﻿@{
+    ViewData["Title"] = "Renewal Rate";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Renewal Rate Report</h1>
+        <p class="page-subtitle">What percentage of expired policies were renewed</p>
+    </div>
+    <div>
+        <button type="button" id="btnExportExcel" class="btn-ptc-outline">
+            <i class="bi bi-file-earmark-excel"></i> Export Excel
+        </button>
+    </div>
+</div>
+
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:1fr auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Year</label>
+                <select id="filterYear" class="form-select" style="max-width:180px;">
+                    @for (int y = DateTime.Now.Year; y >= DateTime.Now.Year - 4; y--)
+                    {
+                        <option value="@y">@y</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Run
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary card -->
+<div id="renewalSummaryStrip" style="display:grid; grid-template-columns:repeat(4,1fr);
+     gap:12px; margin-bottom:18px;"></div>
+
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Renewal Rate Summary</h2>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="report_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#report_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: { url: '@Url.Action("RenewalRateData", "RenewalReport")', type: 'POST' },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                return {
+                                    year: $('#filterYear').val(),
+                                    __RequestVerificationToken: token
+                                };
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'Year',
+                            fields: {
+                                Year        : { type: 'number' },
+                                TotalExpired: { type: 'number' },
+                                Renewed     : { type: 'number' },
+                                NotRenewed  : { type: 'number' },
+                                RenewalRate : { type: 'number' }
+                            }
+                        }
+                    },
+                    serverPaging: false
+                },
+                sortable: false, scrollable: false,
+                columns: [
+                    { field: 'Year',         title: 'Year',          width: 100 },
+                    { field: 'TotalExpired', title: 'Total Expired', width: 150,
+                      attributes: { style: 'text-align:center;' } },
+                    { field: 'Renewed',      title: 'Renewed',       width: 130,
+                      attributes: { style: 'text-align:center; color:var(--ims-accent); font-weight:700;' } },
+                    { field: 'NotRenewed',   title: 'Not Renewed',   width: 140,
+                      attributes: { style: 'text-align:center; color:var(--ims-danger);' } },
+                    {
+                        field: 'RenewalRate', title: 'Renewal Rate', width: 150,
+                        attributes: { style: 'text-align:center;' },
+                        template: function (i) {
+                            var color = i.RenewalRate >= 70 ? 'var(--ims-accent)'
+                                      : i.RenewalRate >= 50 ? 'var(--ims-warning)'
+                                      : 'var(--ims-danger)';
+                            return '<strong style="font-size:18px; color:' + color + ';">'
+                                + i.RenewalRate + '%</strong>';
+                        }
+                    }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                var data = this.dataSource.data();
+                if (data.length > 0) {
+                    var d = data[0];
+                    $('#renewalSummaryStrip').html(
+                        '<div class="stat-card"><div class="stat-label">Year</div>'
+                        + '<div class="stat-value">' + d.Year + '</div></div>'
+                        + '<div class="stat-card"><div class="stat-label">Total Expired</div>'
+                        + '<div class="stat-value">' + d.TotalExpired + '</div></div>'
+                        + '<div class="stat-card stat-accent"><div class="stat-label">Renewed</div>'
+                        + '<div class="stat-value">' + d.Renewed + '</div></div>'
+                        + '<div class="stat-card stat-danger"><div class="stat-label">Not Renewed</div>'
+                        + '<div class="stat-value">' + d.NotRenewed + '</div></div>'
+                    );
+                }
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.read(); });
+
+            $('#btnExportExcel').on('click', function () {
+                var form = $('<form method="post" '
+                    + 'action="@Url.Action("RenewalRateExcel", "RenewalReport")">'
+                    + '<input name="year" value="' + $('#filterYear').val() + '">'
+                    + '<input name="__RequestVerificationToken" '
+                    + 'value="' + $('input[name="__RequestVerificationToken"]').val() + '">'
+                    + '</form>');
+                $('body').append(form);
+                form.submit().remove();
+            });
+
+            // Auto-run on page load
+            grid.dataSource.read();
+        });
+    </script>
+}

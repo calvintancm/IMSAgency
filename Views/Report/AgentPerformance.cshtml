@@ -1,0 +1,129 @@
+﻿@{
+    ViewData["Title"] = "Agent Performance";
+    var agents = (ViewBag.Agents as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Agent Performance Report</h1>
+        <p class="page-subtitle">Premium and policy counts per agent</p>
+    </div>
+    <div>
+        <button type="button" id="btnExportExcel" class="btn-ptc-outline">
+            <i class="bi bi-file-earmark-excel"></i> Export Excel
+        </button>
+    </div>
+</div>
+
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Start Date From</label>
+                <input type="date" id="filterDateFrom" class="form-control" />
+            </div>
+            <div>
+                <label class="form-label">Start Date To</label>
+                <input type="date" id="filterDateTo" class="form-control" />
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Run
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Agent Performance</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="report_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#report_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: { url: '@Url.Action("AgentPerformanceData", "Report")', type: 'POST' },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                return {
+                                    dateFrom: $('#filterDateFrom').val(),
+                                    dateTo  : $('#filterDateTo').val(),
+                                    __RequestVerificationToken: token
+                                };
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'AgentCode',
+                            fields: {
+                                AgentCode      : { type: 'string' },
+                                TotalPolicies  : { type: 'number' },
+                                ActivePolicies : { type: 'number' },
+                                MotorCount     : { type: 'number' },
+                                NonMotorCount  : { type: 'number' },
+                                TotalPremium   : { type: 'number' },
+                                TotalCommission: { type: 'number' }
+                            }
+                        }
+                    },
+                    serverPaging: false
+                },
+                sortable: true, scrollable: true, height: 480,
+                columns: [
+                    { field: 'AgentCode',       title: 'Agent Code',    width: 120 },
+                    { field: 'TotalPolicies',   title: 'Total',         width: 90,  attributes: { style: 'text-align:center;' } },
+                    { field: 'ActivePolicies',  title: 'Active',        width: 90,  attributes: { style: 'text-align:center;' } },
+                    { field: 'MotorCount',      title: 'Motor',         width: 90,  attributes: { style: 'text-align:center;' } },
+                    { field: 'NonMotorCount',   title: 'Non-Motor',     width: 100, attributes: { style: 'text-align:center;' } },
+                    {
+                        field: 'TotalPremium',  title: 'Total Premium', width: 160,
+                        attributes: { style: 'text-align:right; font-weight:700;' },
+                        template: function (i) { return 'RM ' + parseFloat(i.TotalPremium).toFixed(2); }
+                    },
+                    {
+                        field: 'TotalCommission', title: 'Commission',  width: 140,
+                        attributes: { style: 'text-align:right;' },
+                        template: function (i) {
+                            return i.TotalCommission > 0
+                                ? 'RM ' + parseFloat(i.TotalCommission).toFixed(2)
+                                : '<span class="text-muted">—</span>';
+                        }
+                    }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.data().length + ' records');
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.read(); });
+
+            $('#btnExportExcel').on('click', function () {
+                var form = $('<form method="post" action="@Url.Action("AgentPerformanceExcel", "Report")">'
+                    + '<input name="dateFrom" value="' + $('#filterDateFrom').val() + '">'
+                    + '<input name="dateTo"   value="' + $('#filterDateTo').val() + '">'
+                    + '<input name="__RequestVerificationToken" '
+                    + 'value="' + $('input[name="__RequestVerificationToken"]').val() + '">'
+                    + '</form>');
+                $('body').append(form);
+                form.submit().remove();
+            });
+        });
+    </script>
+}

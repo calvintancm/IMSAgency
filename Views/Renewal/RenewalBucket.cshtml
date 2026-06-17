@@ -1,0 +1,80 @@
+﻿@model ImsAgency.Web.Controllers.RenewalBucketConfig
+@{
+    ViewData["Title"] = Model.Title;
+
+    // Bucket day ranges
+    int maxDays = Model.MaxDays;
+    int minDays = Model.MaxDays == 30 ? 0
+                : Model.MaxDays == 60 ? 31
+                : 61;
+
+    var maxDaysJs = maxDays.ToString();
+    var minDaysJs = minDays.ToString();
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">@Model.Title</h1>
+        <p class="page-subtitle">
+            Active policies expiring
+            @(minDays == 0 ? $"within {maxDays} days" : $"between {minDays} and {maxDays} days")
+        </p>
+    </div>
+</div>
+
+<!-- FILTER CARD -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:3fr auto auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Search</label>
+                <input type="text" id="filterSearchText" class="form-control"
+                       placeholder="Cover Note, Client Name, or Reg. No." />
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+            <div>
+                <button type="button" id="btnClearFilter" class="btn-ptc-outline">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GRID -->
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">@Model.Title</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="renewal_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        var BUCKET_MAX_DAYS = @Html.Raw(maxDaysJs);
+        var BUCKET_MIN_DAYS = @Html.Raw(minDaysJs);
+
+        $(document).ready(function () {
+
+            var grid = buildRenewalGrid(
+                '#renewal_grid',
+                '@Url.Action("BucketRead", "Renewal")',
+                BUCKET_MAX_DAYS,
+                BUCKET_MIN_DAYS
+            );
+
+            bindSearchControls(grid);
+            bindReminderButton($('input[name="__RequestVerificationToken"]').val());
+
+        });
+    </script>
+}

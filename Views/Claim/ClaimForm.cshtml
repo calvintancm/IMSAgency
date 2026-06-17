@@ -1,0 +1,273 @@
+﻿@model ImsAgency.Web.Models.ViewModels.LodgeClaimViewModel
+@using Microsoft.AspNetCore.Html
+@{
+    ViewData["Title"] = Model.ClaimId == 0 ? "Lodge New Claim" : "Edit Claim";
+    var isNew = Model.ClaimId == 0;
+
+    Func<string, string, IHtmlContent> Sel = (val, match) =>
+        val == match ? new HtmlString("selected=\"selected\"") : HtmlString.Empty;
+
+    var policyIdJs   = Model.PolicyId.ToString();
+    var policyTextJs = System.Text.Json.JsonSerializer.Serialize(Model.PolicyDisplay ?? "");
+
+    string D(decimal? v) => v.HasValue
+        ? v.Value.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+        : "";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">@(isNew ? "Lodge New Claim" : "Edit Claim")</h1>
+        <p class="page-subtitle">
+            @if (!isNew)
+            {
+                @:Claim Reference will be shown after saving
+            }
+        </p>
+    </div>
+    <div>
+        <a href="@Url.Action("AllClaims")" class="btn-ptc-outline">
+            <i class="bi bi-arrow-left"></i> Back to Claims
+        </a>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+<input type="hidden" id="claimId" value="@Model.ClaimId" />
+
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Claim Details</h2>
+    </div>
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+
+            <!-- POLICY SEARCH -->
+            <div style="grid-column:span 3;">
+                <label class="form-label">
+                    Policy <span class="text-danger">*</span>
+                </label>
+                <input type="text" id="policyCombo" style="width:100%;" />
+                <small class="text-muted">
+                    Search by Cover Note, Registration No., or Client Name
+                </small>
+            </div>
+
+            <!-- CLAIM DATE -->
+            <div>
+                <label class="form-label">
+                    Date of Incident <span class="text-danger">*</span>
+                </label>
+                <input type="date" id="ClaimDate" class="form-control"
+                       value="@Model.ClaimDate.ToString(" yyyy-MM-dd")" />
+            </div>
+
+            <!-- REPORTED DATE -->
+            <div>
+                <label class="form-label">
+                    Date Reported <span class="text-danger">*</span>
+                </label>
+                <input type="date" id="ReportedDate" class="form-control"
+                       value="@Model.ReportedDate.ToString(" yyyy-MM-dd")" />
+            </div>
+
+            <!-- CLAIM TYPE -->
+            <div>
+                <label class="form-label">
+                    Claim Type <span class="text-danger">*</span>
+                </label>
+                @Html.DropDownListFor(m => m.ClaimType,
+                new SelectList(new[]
+                {
+                new { Value = "OwnDamage",  Text = "Own Damage" },
+                new { Value = "ThirdParty", Text = "Third Party" },
+                new { Value = "Theft",      Text = "Theft" },
+                new { Value = "Fire",       Text = "Fire" },
+                new { Value = "Natural",    Text = "Natural Disaster" }
+                }, "Value", "Text", Model.ClaimType),
+                new { @class = "form-select", id = "ClaimType" })
+            </div>
+
+            <!-- CLAIM STATUS -->
+            <div>
+                <label class="form-label">Claim Status</label>
+                @Html.DropDownListFor(m => m.ClaimStatus,
+                new SelectList(new[]
+                {
+                new { Value = "Lodged",     Text = "Lodged" },
+                new { Value = "InProgress", Text = "In Progress" },
+                new { Value = "Approved",   Text = "Approved" },
+                new { Value = "Rejected",   Text = "Rejected" },
+                new { Value = "Closed",     Text = "Closed" }
+                }, "Value", "Text", Model.ClaimStatus),
+                new { @class = "form-select", id = "ClaimStatus" })
+            </div>
+
+
+            <!-- ESTIMATED LOSS -->
+            <div>
+                <label class="form-label">Estimated Loss Amount (RM)</label>
+                <input type="number" id="EstimatedLossAmount" class="form-control"
+                       value="@D(Model.EstimatedLossAmount)" min="0" step="0.01" />
+            </div>
+
+            <!-- APPROVED AMOUNT -->
+            <div>
+                <label class="form-label">Approved Claim Amount (RM)</label>
+                <input type="number" id="ApprovedClaimAmount" class="form-control"
+                       value="@D(Model.ApprovedClaimAmount)" min="0" step="0.01" />
+                <small class="text-muted">
+                    Fill once the insurer approves
+                </small>
+            </div>
+
+            <!-- WORKSHOP -->
+            <div>
+                <label class="form-label">Workshop Name</label>
+                <input type="text" id="WorkshopName" class="form-control"
+                       value="@Model.WorkshopName" placeholder="e.g. ABC Auto Workshop" />
+            </div>
+
+            <!-- CLOSE DATE -->
+            <div>
+                <label class="form-label">Close Date</label>
+                <input type="date" id="CloseDate" class="form-control"
+                       value="@(Model.CloseDate?.ToString(" yyyy-MM-dd") ?? "" )" />
+                <small class="text-muted">Set when status = Closed</small>
+            </div>
+
+            <!-- INSURER CLAIM NUMBER -->
+            <div>
+                <label class="form-label">Insurer Claim Number</label>
+                <input type="text" id="InsurerClaimNumber" class="form-control"
+                       placeholder="Assigned by the insurer" />
+            </div>
+
+            <!-- NARRATIVE -->
+            <div style="grid-column:span 3;">
+                <label class="form-label">Incident Narrative</label>
+                <textarea id="ClaimNarrative" class="form-control" rows="3"
+                          placeholder="Describe what happened...">@Model.ClaimNarrative</textarea>
+            </div>
+
+            <!-- REMARKS -->
+            <div style="grid-column:span 3;">
+                <label class="form-label">Remarks / Internal Notes</label>
+                <textarea id="Remarks" class="form-control" rows="2">@Model.Remarks</textarea>
+            </div>
+
+        </div>
+
+        <div class="mt-3">
+            <button type="button" id="btnSaveClaim" class="btn-ptc-primary">
+                <i class="bi bi-save"></i>
+                @(isNew ? "Lodge Claim" : "Save Changes")
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    var IS_NEW_CLAIM  = @Html.Raw(isNew ? "true" : "false");
+    var EDIT_POLICY_ID   = @Html.Raw(policyIdJs);
+    var EDIT_POLICY_TEXT = @Html.Raw(policyTextJs);
+
+    $(document).ready(function () {
+
+        // ============================================================
+        // POLICY COMBOBOX
+        // ============================================================
+        var policyCombo = $("#policyCombo").kendoComboBox({
+            dataTextField  : "Text",
+            dataValueField : "Id",
+            filter         : "contains",
+            minLength      : 1,
+            autoBind       : false,
+            placeholder    : "Search active policy...",
+            dataSource: {
+                serverFiltering: true,
+                transport: {
+                    read: {
+                        url      : '@Url.Action("SearchActivePolicies","Claim")',
+                        dataType : "json"
+                    }
+                }
+            }
+        }).data("kendoComboBox");
+
+        if (!IS_NEW_CLAIM && EDIT_POLICY_ID) {
+            policyCombo.dataSource.data([{
+                Id  : parseInt(EDIT_POLICY_ID),
+                Text: EDIT_POLICY_TEXT
+            }]);
+            policyCombo.value(EDIT_POLICY_ID);
+            policyCombo.text(EDIT_POLICY_TEXT);
+        }
+
+        // Auto-set Reported Date = Claim Date if not set
+        $('#ClaimDate').on('change', function () {
+            if (!$('#ReportedDate').val()) {
+                $('#ReportedDate').val($(this).val());
+            }
+        });
+
+        // Auto-set Close Date when status changes to Closed
+        $('#ClaimStatus').on('change', function () {
+            if ($(this).val() === 'Closed' && !$('#CloseDate').val()) {
+                var today = new Date();
+                var yyyy  = today.getFullYear();
+                var mm    = String(today.getMonth() + 1).padStart(2, '0');
+                var dd    = String(today.getDate()).padStart(2, '0');
+                $('#CloseDate').val(yyyy + '-' + mm + '-' + dd);
+            }
+        });
+
+        // ============================================================
+        // SAVE CLAIM
+        // ============================================================
+        $('#btnSaveClaim').on('click', function () {
+            var policyId = policyCombo.value();
+
+            if (!policyId || parseInt(policyId) === 0) {
+                KSwal.warning('Please select a policy.'); return;
+            }
+            if (!$('#ClaimDate').val()) {
+                KSwal.warning('Please enter the date of incident.'); return;
+            }
+
+            var payload = {
+                ClaimId             : $('#claimId').val(),
+                PolicyId            : policyId,
+                ClaimDate           : $('#ClaimDate').val(),
+                ReportedDate        : $('#ReportedDate').val(),
+                ClaimType           : $('#ClaimType').val(),
+                ClaimStatus         : $('#ClaimStatus').val(),
+                EstimatedLossAmount : $('#EstimatedLossAmount').val() || null,
+                ApprovedClaimAmount : $('#ApprovedClaimAmount').val() || null,
+                ClaimNarrative      : $('#ClaimNarrative').val(),
+                WorkshopName        : $('#WorkshopName').val(),
+                CloseDate           : $('#CloseDate').val() || null,
+                Remarks             : $('#Remarks').val(),
+                __RequestVerificationToken:
+                    $('input[name="__RequestVerificationToken"]').val()
+            };
+
+            $.post('@Url.Action("SaveClaim","Claim")', payload)
+                .done(function (res) {
+                    if (res.success) {
+                        KSwal.success(res.message).then(function () {
+                            window.location.href = res.redirectUrl;
+                        });
+                    } else {
+                        KSwal.error(res.message);
+                    }
+                })
+                .fail(function () {
+                    KSwal.error('An unexpected error occurred.');
+                });
+        });
+
+    });
+</script>
+}

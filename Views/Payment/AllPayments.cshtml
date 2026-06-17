@@ -1,0 +1,299 @@
+﻿@model ImsAgency.Web.Models.ViewModels.PaymentListViewModel
+@{
+    ViewData["Title"] = "All Payments";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">All Payments</h1>
+        <p class="page-subtitle">Premium collection history</p>
+    </div>
+    <div>
+        <a href="@Url.Action("RecordPayment")" class="btn-ptc-primary">
+            <i class="bi bi-plus-lg"></i> Record Payment
+        </a>
+    </div>
+</div>
+
+<!-- STAT STRIP -->
+<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px;">
+    <div class="stat-card">
+        <div class="stat-label"><i class="bi bi-receipt"></i> Total Receipts</div>
+        <div class="stat-value">@Model.TotalPayments</div>
+    </div>
+    <div class="stat-card stat-accent">
+        <div class="stat-label"><i class="bi bi-cash-stack"></i> Total Collected</div>
+        <div class="stat-value">RM @Model.TotalAmountCollected.ToString("N2")</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-label"><i class="bi bi-hourglass-split"></i> Pending Clearance</div>
+        <div class="stat-value">@Model.PendingClearance</div>
+    </div>
+    <div class="stat-card stat-danger">
+        <div class="stat-label"><i class="bi bi-exclamation-circle"></i> Total Outstanding</div>
+        <div class="stat-value">RM @Model.OutstandingBalance.ToString("N2")</div>
+    </div>
+</div>
+
+<!-- FILTER CARD -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:2fr 1fr 1fr auto auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Search</label>
+                <input type="text" id="filterSearchText" class="form-control"
+                       placeholder="Receipt No., Client, Cover Note, or Reference" />
+            </div>
+            <div>
+                <label class="form-label">Payment Method</label>
+                <select id="filterMethod" class="form-select">
+                    <option value="All">All Methods</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="FPX">FPX</option>
+                    <option value="CreditCard">Credit Card</option>
+                    <option value="DuitNowQR">DuitNow QR</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Cleared</label>
+                <select id="filterCleared" class="form-select">
+                    <option value="All">All</option>
+                    <option value="Yes">Cleared</option>
+                    <option value="No">Pending</option>
+                </select>
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+            <div>
+                <button type="button" id="btnClearFilter" class="btn-ptc-outline">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GRID CARD -->
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Payment History</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="payment_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            function getFilters() {
+                return {
+                    searchText    : $('#filterSearchText').val(),
+                    paymentMethod : $('#filterMethod').val(),
+                    cleared       : $('#filterCleared').val()
+                };
+            }
+
+            var grid = $("#payment_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: {
+                            url  : '@Url.Action("PaymentsRead", "Payment")',
+                            type : 'POST'
+                        },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                var sf = null, sd = null;
+                                if (data.sort && data.sort.length > 0) {
+                                    sf = data.sort[0].field;
+                                    sd = data.sort[0].dir;
+                                }
+                                return $.extend({
+                                    page: data.page, pageSize: data.pageSize,
+                                    sortField: sf, sortDir: sd
+                                }, getFilters(), { __RequestVerificationToken: token });
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'PaymentId',
+                            fields: {
+                                PaymentId          : { type: 'number' },
+                                ReceiptNumber      : { type: 'string' },
+                                ClientName         : { type: 'string' },
+                                CoverNoteNumber    : { type: 'string' },
+                                RegistrationNumber : { type: 'string' },
+                                PaymentDate        : { type: 'date' },
+                                PaymentMethod      : { type: 'string' },
+                                AmountPaid         : { type: 'number' },
+                                BankOrIssueName    : { type: 'string' },
+                                ReferenceNumber    : { type: 'string' },
+                                IsClearedAndSettled: { type: 'boolean' },
+                                RecordedBy         : { type: 'string' }
+                            }
+                        }
+                    },
+                    pageSize: 15, serverPaging: true, serverSorting: true,
+                    sort: { field: 'PaymentId', dir: 'desc' },
+                    error: function (e) {
+                        var msg = 'An error occurred.';
+                        try {
+                            var p = JSON.parse(e.xhr.responseText);
+                            if (p.Errors && p.Errors.error && p.Errors.error.errors)
+                                msg = p.Errors.error.errors[0];
+                        } catch (ex) { }
+                        KSwal.error(msg);
+                    }
+                },
+                pageable : { pageSize: 15, pageSizes: [15, 30, 50], info: true },
+                sortable : true, scrollable: true, height: 560,
+                columns  : [
+                    {
+                        field: 'ReceiptNumber',
+                        title: 'Receipt',
+                        width: 150,
+                        template: function (item) {
+                            return '<strong>' + kendo.htmlEncode(item.ReceiptNumber) + '</strong>';
+                        }
+                    },
+                    {
+                        field: 'ClientName',
+                        title: 'Client',
+                        width: 200,
+                        template: function (item) {
+                            return kendo.htmlEncode(item.ClientName)
+                                + '<br/><small class="text-muted">'
+                                + kendo.htmlEncode(item.CoverNoteNumber)
+                                + (item.RegistrationNumber
+                                    ? ' — ' + kendo.htmlEncode(item.RegistrationNumber)
+                                    : '')
+                                + '</small>';
+                        }
+                    },
+                    {
+                        field: 'PaymentDate',
+                        title: 'Date',
+                        width: 110,
+                        template: function (item) {
+                            return kendo.toString(kendo.parseDate(item.PaymentDate), 'dd/MM/yyyy');
+                        }
+                    },
+                    {
+                        field: 'PaymentMethod',
+                        title: 'Method',
+                        width: 120,
+                        template: function (item) {
+                            var icons = {
+                                Cash: 'bi-cash', Cheque: 'bi-bank',
+                                FPX: 'bi-phone', CreditCard: 'bi-credit-card',
+                                DuitNowQR: 'bi-qr-code-scan'
+                            };
+                            var icon = icons[item.PaymentMethod] || 'bi-currency-dollar';
+                            return '<i class="bi ' + icon + '"></i> '
+                                + kendo.htmlEncode(item.PaymentMethod);
+                        }
+                    },
+                    {
+                        field: 'AmountPaid',
+                        title: 'Amount',
+                        width: 130,
+                        attributes: { style: 'text-align:right; font-weight:600;' },
+                        template: function (item) {
+                            return 'RM ' + parseFloat(item.AmountPaid).toFixed(2);
+                        }
+                    },
+                    {
+                        field: 'ReferenceNumber',
+                        title: 'Reference',
+                        width: 150,
+                        template: function (item) {
+                            var ref  = item.ReferenceNumber || '';
+                            var bank = item.BankOrIssueName || '';
+                            if (!ref && !bank) return '<span class="text-muted">—</span>';
+                            return (bank ? kendo.htmlEncode(bank) + '<br/>' : '')
+                                 + (ref ? '<small class="text-muted">'
+                                 + kendo.htmlEncode(ref) + '</small>' : '');
+                        }
+                    },
+                    {
+                        field: 'IsClearedAndSettled',
+                        title: 'Cleared',
+                        width: 100,
+                        template: function (item) {
+                            return item.IsClearedAndSettled
+                                ? '<span class="badge-status badge-active">Cleared</span>'
+                                : '<span class="badge-status badge-warning">Pending</span>';
+                        }
+                    },
+                    {
+                        field: 'RecordedBy',
+                        title: 'Recorded By',
+                        width: 130,
+                        template: function (item) {
+                            return item.RecordedBy
+                                ? kendo.htmlEncode(item.RecordedBy)
+                                : '<span class="text-muted">—</span>';
+                        }
+                    },
+                    {
+                        title   : '',
+                        width   : 80,
+                        sortable: false,
+                        template: function (item) {
+                            if (item.IsClearedAndSettled) return '';
+                            return '<button type="button" '
+                                + 'class="btn btn-sm btn-outline-success btn-toggle-cleared" '
+                                + 'data-id="' + item.PaymentId + '" '
+                                + 'title="Mark as Cleared">'
+                                + '<i class="bi bi-check-circle"></i></button>';
+                        }
+                    }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+            $('#btnClearFilter').on('click', function () {
+                $('#filterSearchText').val('');
+                $('#filterMethod').val('All');
+                $('#filterCleared').val('All');
+                grid.dataSource.page(1);
+            });
+            $('#filterSearchText').on('keypress', function (e) {
+                if (e.which === 13) { $('#btnSearch').click(); }
+            });
+
+            // Toggle Cleared
+            $("#payment_grid").on("click", ".btn-toggle-cleared", function () {
+                var paymentId = $(this).data('id');
+                KSwal.confirm('Mark this payment as cleared and settled?', 'Confirm').then(function (r) {
+                    if (!r.isConfirmed) return;
+                    $.post('@Url.Action("ToggleCleared", "Payment")', {
+                        PaymentId: paymentId,
+                        __RequestVerificationToken:
+                            $('input[name="__RequestVerificationToken"]').val()
+                    }).done(function (res) {
+                        if (res.Errors) KSwal.error(res.Errors.error.errors[0]);
+                        else { KSwal.success('Payment marked as cleared.'); grid.dataSource.read(); }
+                    });
+                });
+            });
+
+        });
+    </script>
+}

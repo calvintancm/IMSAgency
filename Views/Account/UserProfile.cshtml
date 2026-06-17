@@ -1,0 +1,132 @@
+﻿@model ImsAgency.Web.ViewModels.UserProfileView
+@{
+    ViewData["Title"] = "User Profile";
+    ViewData["BreadcrumbSection"] = "Account";
+    ViewData["BreadcrumbPage"] = "User Profile";
+} 
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">User Profile</h1>
+        <p class="page-subtitle">View and update your account information</p>
+    </div>
+</div>
+
+<div class="ptc-card">
+    <div class="ptc-card-body" style="padding: 24px; max-width: 550px;">
+        <div style="margin-bottom: 20px;">
+            <i class="bi bi-person-circle" style="font-size: 32px; color: var(--accent);"></i>
+            <h3 style="margin-top: 8px; margin-bottom: 4px;">Personal Information</h3>
+            <p style="color: var(--text-secondary);">Your registered details.</p>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Username</label>
+            <input id="username" type="text" class="k-textbox" style="width: 100%;" readonly disabled value="@Model.UserName" />
+        </div>
+
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Email</label>
+            <input id="email" type="email" class="k-textbox" style="width: 100%;" value="@Model.Email" />
+        </div>
+
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">First Name</label>
+            <input id="firstName" type="text" class="k-textbox" style="width: 100%;" value="@Model.FirstName" />
+        </div>
+
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Last Name</label>
+            <input id="lastName" type="text" class="k-textbox" style="width: 100%;" value="@Model.LastName" />
+        </div>
+
+        <div class="form-group" style="margin-bottom: 24px;">
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Phone Number</label>
+            <input id="phoneNumber" type="tel" class="k-textbox" style="width: 100%;" value="@Model.PhoneNumber" />
+        </div>
+
+        <div>
+            <button id="saveProfileBtn" class="btn-ptc-primary" style="min-width: 140px;">
+                <i class="bi bi-save"></i> Save Changes
+            </button>
+            <button id="resetProfileBtn" class="btn-ptc-outline" style="margin-left: 12px;">
+                <i class="bi bi-arrow-clockwise"></i> Reset
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(function () {
+           
+            var original = {
+                email: $("#email").val(),
+                firstName: $("#firstName").val(),
+                lastName: $("#lastName").val(),
+                phoneNumber: $("#phoneNumber").val()
+            };
+
+        
+            $("#resetProfileBtn").click(function () {
+                $("#email").val(original.email);
+                $("#firstName").val(original.firstName);
+                $("#lastName").val(original.lastName);
+                $("#phoneNumber").val(original.phoneNumber);
+                KSwal.toast("info", "Reset to saved values.");
+            });
+
+         
+            $("#saveProfileBtn").click(function () {
+                var profileData = {
+                    userName: $("#username").val(),     
+                    email: $("#email").val(),
+                    firstName: $("#firstName").val(),
+                    lastName: $("#lastName").val(),
+                    phoneNumber: $("#phoneNumber").val()
+                };
+
+              
+                if (!profileData.email || !profileData.firstName || !profileData.lastName || !profileData.phoneNumber) {
+                    KSwal.toast("error", "All fields are required. If you cannot update, please contact EDP Support.");
+                    return;
+                }
+
+             
+                KSwal.loading("Updating profile...");
+
+                $.ajax({
+                    url: '@Url.Action("UpdateProfile", "Account")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(profileData),
+                    headers: {
+                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function (response) {
+                        KSwal.close();
+                        if (response.success) {
+                            KSwal.toast("success", response.message);
+                           
+                            original = {
+                                email: profileData.email,
+                                firstName: profileData.firstName,
+                                lastName: profileData.lastName,
+                                phoneNumber: profileData.phoneNumber
+                            };
+                        } else {
+                            var msg = response.errors ? response.errors.join("\n") : response.message;
+                            KSwal.error("Update Failed", msg);
+                        }
+                    },
+                    error: function (xhr) {
+                        KSwal.close();
+                        var err = xhr.responseJSON;
+                        var msg = err && err.errors ? err.errors.join("\n") : (err && err.message) || "Server error.";
+                        KSwal.error("Error", msg);
+                    }
+                });
+            });
+        });
+    </script>
+}

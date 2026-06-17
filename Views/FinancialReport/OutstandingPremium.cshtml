@@ -1,0 +1,138 @@
+﻿@{
+    ViewData["Title"] = "Outstanding Premium";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Outstanding Premium Report</h1>
+        <p class="page-subtitle">Policies with unpaid or partially paid premiums</p>
+    </div>
+    <div>
+        <button type="button" id="btnExportExcel" class="btn-ptc-outline">
+            <i class="bi bi-file-earmark-excel"></i> Export Excel
+        </button>
+    </div>
+</div>
+
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:3fr auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Search</label>
+                <input type="text" id="filterSearchText" class="form-control"
+                       placeholder="Cover Note or Client Name" />
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Run
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Outstanding Balances</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="report_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#report_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: { url: '@Url.Action("OutstandingPremiumData", "FinancialReport")', type: 'POST' },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                return {
+                                    page: data.page, pageSize: data.pageSize,
+                                    searchText: $('#filterSearchText').val(),
+                                    __RequestVerificationToken: token
+                                };
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'PolicyId',
+                            fields: {
+                                PolicyId          : { type: 'number' },
+                                CoverNoteNumber   : { type: 'string' },
+                                ClientName        : { type: 'string' },
+                                InsurerName       : { type: 'string' },
+                                PolicyStatus      : { type: 'string' },
+                                NetPremiumPayable : { type: 'number' },
+                                TotalPaid         : { type: 'number' },
+                                OutstandingBalance: { type: 'number' }
+                            }
+                        }
+                    },
+                    pageSize: 20, serverPaging: true
+                },
+                pageable : { pageSize: 20, pageSizes: [20, 50, 100], info: true },
+                sortable : false, scrollable: true, height: 500,
+                columns  : [
+                    { field: 'CoverNoteNumber', title: 'Cover Note', width: 160 },
+                    { field: 'ClientName',       title: 'Client',    width: 210 },
+                    { field: 'InsurerName',      title: 'Insurer',   width: 160 },
+                    {
+                        field: 'PolicyStatus', title: 'Status', width: 100,
+                        template: function (i) {
+                            var map = { Active: 'badge-active', Quoted: 'badge-pending' };
+                            return '<span class="badge-status ' + (map[i.PolicyStatus] || '') + '">'
+                                + i.PolicyStatus + '</span>';
+                        }
+                    },
+                    {
+                        field: 'NetPremiumPayable', title: 'Net Premium', width: 140,
+                        attributes: { style: 'text-align:right;' },
+                        template: function (i) { return 'RM ' + parseFloat(i.NetPremiumPayable).toFixed(2); }
+                    },
+                    {
+                        field: 'TotalPaid', title: 'Paid', width: 130,
+                        attributes: { style: 'text-align:right; color:var(--ims-accent);' },
+                        template: function (i) { return 'RM ' + parseFloat(i.TotalPaid).toFixed(2); }
+                    },
+                    {
+                        field: 'OutstandingBalance', title: 'Outstanding', width: 140,
+                        attributes: { style: 'text-align:right; color:var(--ims-danger); font-weight:700;' },
+                        template: function (i) {
+                            return 'RM ' + parseFloat(i.OutstandingBalance).toFixed(2);
+                        }
+                    }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+            $('#filterSearchText').on('keypress', function (e) {
+                if (e.which === 13) { $('#btnSearch').click(); }
+            });
+
+            $('#btnExportExcel').on('click', function () {
+                var form = $('<form method="post" '
+                    + 'action="@Url.Action("OutstandingPremiumExcel", "FinancialReport")">'
+                    + '<input name="__RequestVerificationToken" '
+                    + 'value="' + $('input[name="__RequestVerificationToken"]').val() + '">'
+                    + '</form>');
+                $('body').append(form);
+                form.submit().remove();
+            });
+        });
+    </script>
+}

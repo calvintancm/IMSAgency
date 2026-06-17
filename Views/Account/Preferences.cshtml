@@ -1,0 +1,150 @@
+﻿@model ImsAgency.Web.ViewModels.UserPreferences
+@{
+    ViewData["Title"] = "Preferences";
+    ViewData["BreadcrumbSection"] = "Account";
+    ViewData["BreadcrumbPage"] = "Preferences";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">User Preferences</h1>
+        <p class="page-subtitle">Customise your application settings</p>
+    </div>
+</div>
+
+<div class="ptc-card">
+    <div class="ptc-card-body" style="padding: 24px; max-width: 550px;">
+        <div style="margin-bottom: 20px;">
+            <i class="bi bi-sliders2" style="font-size: 32px; color: var(--accent);"></i>
+            <h3 style="margin-top: 8px; margin-bottom: 4px;">Preferences</h3>
+            <p style="color: var(--text-secondary);">These settings will be remembered for your next sessions.</p>
+        </div>
+
+        <!-- Theme -->
+        <div class="form-group" style="margin-bottom: 20px;">
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Theme</label>
+            <select id="themeSelect" class="k-dropdown" style="width: 100%;">
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+            </select>
+        </div>
+
+        <!-- Language -->
+        <div class="form-group" style="margin-bottom: 20px;">
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Language</label>
+            <select id="languageSelect" class="k-dropdown" style="width: 100%;">
+                <option value="en">English</option>
+               @*  <option value="zh">中文</option>
+                <option value="ms">Bahasa Malaysia</option> *@
+            </select>
+        </div>
+
+        <!-- Email Notifications -->
+        <div class="form-group" style="margin-bottom: 20px;">
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Email Notifications</label>
+            <div style="display: flex; gap: 20px;">
+                <label style="display: flex; align-items: center; gap: 6px;">
+                    <input type="radio" name="emailNotifications" value="true" /> Yes
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px;">
+                    <input type="radio" name="emailNotifications" value="false" /> No
+                </label>
+            </div>
+        </div>
+
+        <!-- Default Page Size -->
+        <div class="form-group" style="margin-bottom: 24px;">
+            <label style="font-weight: 600; margin-bottom: 6px; display: block;">Default Page Size (Grids)</label>
+            <select id="pageSizeSelect" class="k-dropdown" style="width: 100%;">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+        </div>
+
+        <div>
+            <button id="savePrefBtn" class="btn-ptc-primary" style="min-width: 140px;">
+                <i class="bi bi-save"></i> Save Preferences
+            </button>
+            <button id="resetPrefBtn" class="btn-ptc-outline" style="margin-left: 12px;">
+                <i class="bi bi-arrow-clockwise"></i> Reset
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(function () {
+           
+            var initialTheme = "@Model.Theme";
+            var initialLang = "@Model.Language";
+            var initialEmail = "@Model.EmailNotifications".toLowerCase() === "true";
+            var initialPageSize = "@Model.DefaultPageSize";
+
+            // Initialize Kendo DropDownLists (for consistent styling)
+            $("#themeSelect").kendoDropDownList({ dataTextField: "text", dataValueField: "value" });
+            $("#languageSelect").kendoDropDownList({ dataTextField: "text", dataValueField: "value" });
+            $("#pageSizeSelect").kendoDropDownList({ dataTextField: "text", dataValueField: "value" });
+
+            // Set initial values
+            $("#themeSelect").data("kendoDropDownList").value(initialTheme);
+            $("#languageSelect").data("kendoDropDownList").value(initialLang);
+            $("#pageSizeSelect").data("kendoDropDownList").value(initialPageSize);
+            $("input[name='emailNotifications'][value='" + initialEmail + "']").prop("checked", true);
+
+            // Reset to original values
+            $("#resetPrefBtn").click(function () {
+                $("#themeSelect").data("kendoDropDownList").value(initialTheme);
+                $("#languageSelect").data("kendoDropDownList").value(initialLang);
+                $("#pageSizeSelect").data("kendoDropDownList").value(initialPageSize);
+                $("input[name='emailNotifications'][value='" + initialEmail + "']").prop("checked", true);
+                KSwal.toast("info", "Reset to saved preferences.");
+            });
+
+            // Save preferences
+            $("#savePrefBtn").click(function () {
+                var theme = $("#themeSelect").data("kendoDropDownList").value();
+                var language = $("#languageSelect").data("kendoDropDownList").value();
+                var emailNotif = $("input[name='emailNotifications']:checked").val() === "true";
+                var pageSize = parseInt($("#pageSizeSelect").data("kendoDropDownList").value());
+
+                KSwal.loading("Saving preferences...");
+
+                $.ajax({
+                    url: '@Url.Action("SavePreferences", "Account")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        theme: theme,
+                        language: language,
+                        emailNotifications: emailNotif,
+                        defaultPageSize: pageSize
+                    }),
+                    success: function (response) {
+                        KSwal.close();
+                        if (response.success) {
+                            KSwal.toast("success", response.message);
+                            // Update stored initial values
+                            initialTheme = theme;
+                            initialLang = language;
+                            initialEmail = emailNotif;
+                            initialPageSize = pageSize;
+                            // Optional: apply theme immediately
+                            if (theme === "dark") $("body").addClass("dark-theme");
+                            else $("body").removeClass("dark-theme");
+                        } else {
+                            KSwal.error("Error", response.message);
+                        }
+                    },
+                    error: function (xhr) {
+                        KSwal.close();
+                        var msg = xhr.responseJSON?.message || "Server error.";
+                        KSwal.error("Error", msg);
+                    }
+                });
+            });
+        });
+    </script>
+}

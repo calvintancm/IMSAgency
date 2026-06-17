@@ -249,7 +249,7 @@
 
     @await Html.PartialAsync("_Navigation")
 
-    <form id="logoutForm" method="post" asp-controller="Auth" asp-action="Logout" style="display:none;">
+    <form id="logoutForm" method="post" asp-controller="Account" asp-action="Logout" style="display:none;">
         @Html.AntiForgeryToken()
     </form>
 
@@ -422,6 +422,7 @@
     <script src="~/lib/kendo/2019.1.220/kendo.all.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.10.1/sweetalert2.all.min.js"></script>
     <script src="~/js/sweetalert-kendo.js?v=@DateTime.Now.Ticks"></script>
+    <script src="~/js/renewal-grid.js"></script>
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>

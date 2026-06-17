@@ -1,0 +1,144 @@
+﻿@{
+    ViewData["Title"] = "Role Management";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Role Management</h1>
+        <p class="page-subtitle">System roles and user counts</p>
+    </div>
+</div>
+
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">System Roles</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="roles_grid"></div>
+    </div>
+</div>
+
+<!-- Role Permission Table -->
+<div class="ptc-card mt-3">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Access Level Summary</h2>
+    </div>
+    <div class="ptc-card-body">
+        <table class="table table-bordered table-sm">
+            <thead class="table-dark">
+                <tr>
+                    <th>Module</th>
+                    <th class="text-center">Admin</th>
+                    <th class="text-center">Senior Agent</th>
+                    <th class="text-center">Agent</th>
+                    <th class="text-center">Support</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{
+                    var modules = new[]
+                    {
+                                new { Name = "Dashboard",           Admin = true, Senior = true, Agent = true, Support = true },
+                                new { Name = "Clients (Read+Add)",  Admin = true, Senior = true, Agent = true, Support = false },
+                                new { Name = "Blacklisted Clients", Admin = true, Senior = true, Agent = false, Support = false },
+                                new { Name = "Vehicles",            Admin = true, Senior = true, Agent = true, Support = false },
+                                new { Name = "Motor Policies",      Admin = true, Senior = true, Agent = true, Support = false },
+                                new { Name = "Non-Motor Policies",  Admin = true, Senior = true, Agent = true, Support = false },
+                                new { Name = "Renewals (Read)",     Admin = true, Senior = true, Agent = true, Support = true },
+                                new { Name = "Payments (Record)",   Admin = true, Senior = true, Agent = true, Support = false },
+                                new { Name = "Outstanding Balances",Admin = true, Senior = true, Agent = false, Support = false },
+                                new { Name = "Claims (Read)",       Admin = true, Senior = true, Agent = true, Support = true },
+                                new { Name = "Lodge Claim",         Admin = true, Senior = true, Agent = true, Support = false },
+                                new { Name = "Reports",             Admin = true, Senior = true, Agent = false, Support = true },
+                                new { Name = "Master Data",         Admin = true, Senior = false, Agent = false, Support = false },
+                                new { Name = "Security / Admin",    Admin = true, Senior = false, Agent = false, Support = false },
+                                };
+
+                    string Tick(bool v) => v ? "<i class=\"bi bi-check-circle-fill text-success\"></i>" : "<span class=\"text-muted\">—</span>";
+                }
+                @foreach (var m in modules)
+                {
+                    <tr>
+                        <td>@m.Name</td>
+                        <td class="text-center">@Html.Raw(Tick(m.Admin))</td>
+                        <td class="text-center">@Html.Raw(Tick(m.Senior))</td>
+                        <td class="text-center">@Html.Raw(Tick(m.Agent))</td>
+                        <td class="text-center">@Html.Raw(Tick(m.Support))</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#roles_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: {
+                            url  : '@Url.Action("RolesRead", "Security")',
+                            type : 'POST'
+                        },
+                        parameterMap: function (data, operation) {
+                            return $.extend({}, data, {
+                                __RequestVerificationToken:
+                                    $('input[name="__RequestVerificationToken"]').val()
+                            });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'RoleId',
+                            fields: {
+                                RoleId   : { type: 'string' },
+                                RoleName : { type: 'string' },
+                                UserCount: { type: 'number' }
+                            }
+                        }
+                    },
+                    serverPaging: false
+                },
+                sortable  : false,
+                scrollable: false,
+                columns   : [
+                    { field: 'RoleName',  title: 'Role Name',  width: 200 },
+                    {
+                        field: 'UserCount',
+                        title: 'Users Assigned',
+                        width: 150,
+                        attributes: { style: 'text-align:center;' },
+                        template: function (item) {
+                            return '<span class="badge-status badge-active">'
+                                + item.UserCount + '</span>';
+                        }
+                    },
+                    {
+                        title: 'Description',
+                        template: function (item) {
+                            var desc = {
+                                Admin       : 'Full system access — all modules including Security and Master Data.',
+                                SeniorAgent : 'Clients, Vehicles, Policies, Renewals, Payments, Claims, Reports.',
+                                Agent       : 'Clients (read+add), Policies (read+add), Renewals (read), Payments (record).',
+                                Support     : 'Renewals (read), Claims (read), Reports (read-only).'
+                            };
+                            return '<small class="text-muted">'
+                                + (desc[item.RoleName] || '—') + '</small>';
+                        }
+                    }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.data().length + ' records');
+            });
+
+        });
+    </script>
+}

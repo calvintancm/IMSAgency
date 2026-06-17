@@ -1,25 +1,27 @@
 ﻿// Controllers/AuthController.cs
 using ImsAgency.Web.Data;
-using ImsAgency.Web.ViewModels.Auth;
 using ImsAgency.Web.Models.Identity;
 using ImsAgency.Web.Models.IMS;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using ImsAgency.Web.ViewModels;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace ImsAgency.Web.Controllers
 {
-    public class AuthController : Controller
+    public class AccountController : Controller
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ApplicationDbContext _db;
-        private readonly ILogger<AuthController> _logger;
+        private readonly ILogger<AccountController> _logger;
 
-        public AuthController(
+        public AccountController(
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
             ApplicationDbContext db,
-            ILogger<AuthController> logger)
+            ILogger<AccountController> logger)
         {
             _signInManager = signInManager;
             _userManager = userManager;
@@ -117,7 +119,7 @@ namespace ImsAgency.Web.Controllers
             _logger.LogInformation("User {Username} logged out.", user?.UserName ?? "Unknown");
 
            // return RedirectToAction("Login");
-            return RedirectToAction("Login", "Auth");
+            return RedirectToAction("Login", "Account");
         }
 
         // ================================================================
@@ -170,6 +172,112 @@ namespace ImsAgency.Web.Controllers
             }
 
             await _db.SaveChangesAsync();
+        }
+
+
+        // ─────────────────────────────────────────────────────────────────
+        // GET /Account/ChangePassword
+        // ─────────────────────────────────────────────────────────────────
+        [HttpGet]
+        [Authorize]
+        public IActionResult ChangePassword()
+        {
+            return View();
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // GET /Account/UserProfile
+        // ─────────────────────────────────────────────────────────────────
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> UserProfile()
+        {
+            // Use Email claim instead of Name
+            var email = User.FindFirstValue(ClaimTypes.Email);
+            var user = await _userManager.FindByEmailAsync(email);
+
+            string firstName = email;
+            string lastName = string.Empty;
+
+            if (email.Contains('.'))
+            {
+                var parts = email.Split('@')[0].Split('.');
+                firstName = parts[0];
+                lastName = parts.Length > 1 ? parts[1] : string.Empty;
+            }
+
+            var roles = user != null
+                ? await _userManager.GetRolesAsync(user)
+                : new List<string>();
+
+            var model = new UserProfileView
+            {
+                UserName = user?.UserName ?? email,
+                Email = user?.Email ?? email,
+                FirstName = firstName,
+                LastName = lastName,
+                PhoneNumber = user?.PhoneNumber ?? string.Empty
+            };
+
+            return View(model);
+        }
+
+
+
+
+        // ─────────────────────────────────────────────────────────────────
+        // GET /Account/Preferences
+        // ─────────────────────────────────────────────────────────────────
+        [Authorize]
+        public IActionResult Preferences()
+        {
+            var model = new UserPreferences
+            {
+                Theme = Request.Cookies["UserTheme"] ?? "light",
+                Language = Request.Cookies["UserLanguage"] ?? "en",
+                EmailNotifications = Request.Cookies["EmailNotifications"] == "true",
+                DefaultPageSize = int.TryParse(Request.Cookies["DefaultPageSize"], out int size) ? size : 50
+            };
+            return View(model);
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // POST /Account/SavePreferences
+        // ─────────────────────────────────────────────────────────────────
+        [Authorize]
+        [HttpPost]
+        public IActionResult SavePreferences([FromBody] UserPreferences model)
+        {
+            try
+            {
+                var options = new CookieOptions
+                {
+                    Expires = DateTimeOffset.UtcNow.AddYears(1),
+                    HttpOnly = false
+                };
+                Response.Cookies.Append("UserTheme", model.Theme ?? "light", options);
+                Response.Cookies.Append("UserLanguage", model.Language ?? "en", options);
+                Response.Cookies.Append("EmailNotifications", model.EmailNotifications.ToString(), options);
+                Response.Cookies.Append("DefaultPageSize", model.DefaultPageSize.ToString(), options);
+
+                _logger.LogInformation("Preferences saved for user {User}", User.Identity?.Name);
+                return Ok(new { success = true, message = "Preferences saved." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SavePreferences failed");
+                return BadRequest(new { success = false, message = "Failed to save preferences." });
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // Helpers
+        // ─────────────────────────────────────────────────────────────────
+        private IActionResult RedirectToLocal(string returnUrl)
+        {
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+                return Redirect(returnUrl);
+            return RedirectToAction("Index", "Dashboard");
         }
     }
 }

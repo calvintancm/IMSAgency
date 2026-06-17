@@ -1,0 +1,177 @@
+﻿@{
+    ViewData["Title"] = "Session Audit Log";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Session Audit Log</h1>
+        <p class="page-subtitle">Login and logout history for all users</p>
+    </div>
+</div>
+
+<!-- FILTER -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:2fr 1fr auto auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Search</label>
+                <input type="text" id="filterSearchText" class="form-control"
+                       placeholder="Username or IP Address" />
+            </div>
+            <div>
+                <label class="form-label">Active Sessions Only</label>
+                <select id="filterActive" class="form-select">
+                    <option value="No">All Sessions</option>
+                    <option value="Yes">Active Only</option>
+                </select>
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+            <div>
+                <button type="button" id="btnClearFilter" class="btn-ptc-outline">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GRID -->
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Audit Log</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="audit_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#audit_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: {
+                            url  : '@Url.Action("AuditLogRead", "Security")',
+                            type : 'POST'
+                        },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                return {
+                                    page      : data.page,
+                                    pageSize  : data.pageSize,
+                                    searchText: $('#filterSearchText').val(),
+                                    activeOnly: $('#filterActive').val(),
+                                    __RequestVerificationToken: token
+                                };
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'SessionId',
+                            fields: {
+                                SessionId    : { type: 'number' },
+                                Username     : { type: 'string' },
+                                IpAddress    : { type: 'string' },
+                                LoginTime    : { type: 'date' },
+                                LogoutTime   : { type: 'date' },
+                                IsActive     : { type: 'boolean' },
+                                LogoutReason : { type: 'string' },
+                                Duration     : { type: 'number' }
+                            }
+                        }
+                    },
+                    pageSize: 20, serverPaging: true
+                },
+                pageable : { pageSize: 20, pageSizes: [20, 50, 100], info: true },
+                sortable : false, scrollable: true, height: 540,
+                columns  : [
+                    {
+                        field: 'Username',
+                        title: 'Username',
+                        width: 150,
+                        template: function (item) {
+                            return '<strong>' + kendo.htmlEncode(item.Username) + '</strong>'
+                                + (item.IsActive
+                                    ? ' <span class="badge-status badge-active">Active</span>'
+                                    : '');
+                        }
+                    },
+                    { field: 'IpAddress', title: 'IP Address', width: 140 },
+                    {
+                        field: 'LoginTime',
+                        title: 'Login Time',
+                        width: 160,
+                        template: function (item) {
+                            return kendo.toString(
+                                kendo.parseDate(item.LoginTime), 'dd/MM/yyyy HH:mm');
+                        }
+                    },
+                    {
+                        field: 'LogoutTime',
+                        title: 'Logout Time',
+                        width: 160,
+                        template: function (item) {
+                            if (!item.LogoutTime)
+                                return '<span class="text-muted">—</span>';
+                            return kendo.toString(
+                                kendo.parseDate(item.LogoutTime), 'dd/MM/yyyy HH:mm');
+                        }
+                    },
+                    {
+                        field: 'Duration',
+                        title: 'Duration',
+                        width: 110,
+                        attributes: { style: 'text-align:center;' },
+                        template: function (item) {
+                            if (item.Duration === null || item.Duration === undefined)
+                                return '<span class="text-muted">—</span>';
+                            var h = Math.floor(item.Duration / 60);
+                            var m = item.Duration % 60;
+                            return h > 0
+                                ? h + 'h ' + m + 'm'
+                                : m + ' min';
+                        }
+                    },
+                    {
+                        field: 'LogoutReason',
+                        title: 'Logout Reason',
+                        width: 150,
+                        template: function (item) {
+                            if (!item.LogoutReason)
+                                return '<span class="text-muted">—</span>';
+                            return kendo.htmlEncode(item.LogoutReason);
+                        }
+                    }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+            $('#btnClearFilter').on('click', function () {
+                $('#filterSearchText').val('');
+                $('#filterActive').val('No');
+                grid.dataSource.page(1);
+            });
+            $('#filterSearchText').on('keypress', function (e) {
+                if (e.which === 13) { $('#btnSearch').click(); }
+            });
+
+        });
+    </script>
+}

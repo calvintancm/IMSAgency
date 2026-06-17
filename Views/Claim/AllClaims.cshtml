@@ -1,0 +1,289 @@
+﻿@model ImsAgency.Web.Models.ViewModels.ClaimListViewModel
+@{
+    ViewData["Title"] = "All Claims";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">All Claims</h1>
+        <p class="page-subtitle">Claims register across all policies</p>
+    </div>
+    <div>
+        <a href="@Url.Action("LodgeClaim")" class="btn-ptc-primary">
+            <i class="bi bi-plus-lg"></i> Lodge New Claim
+        </a>
+    </div>
+</div>
+
+<!-- STAT STRIP -->
+<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px;">
+    <div class="stat-card">
+        <div class="stat-label"><i class="bi bi-file-earmark-medical"></i> Total Claims</div>
+        <div class="stat-value">@Model.TotalClaims</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-label"><i class="bi bi-hourglass-split"></i> Open Claims</div>
+        <div class="stat-value">@Model.OpenClaims</div>
+    </div>
+    <div class="stat-card stat-accent">
+        <div class="stat-label"><i class="bi bi-check-circle"></i> Approved</div>
+        <div class="stat-value">@Model.ApprovedClaims</div>
+    </div>
+    <div class="stat-card stat-danger">
+        <div class="stat-label"><i class="bi bi-currency-dollar"></i> Total Approved Amount</div>
+        <div class="stat-value">RM @Model.TotalApprovedAmount.ToString("N0")</div>
+    </div>
+</div>
+
+<!-- FILTER CARD -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:2fr 1fr 1fr auto auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Search</label>
+                <input type="text" id="filterSearchText" class="form-control"
+                       placeholder="Claim Ref, Insurer Claim No., Cover Note, or Client" />
+            </div>
+            <div>
+                <label class="form-label">Claim Type</label>
+                <select id="filterClaimType" class="form-select">
+                    <option value="All">All Types</option>
+                    <option value="OwnDamage">Own Damage</option>
+                    <option value="ThirdParty">Third Party</option>
+                    <option value="Theft">Theft</option>
+                    <option value="Fire">Fire</option>
+                    <option value="Natural">Natural Disaster</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Status</label>
+                <select id="filterStatus" class="form-select">
+                    <option value="All">All</option>
+                    <option value="Lodged">Lodged</option>
+                    <option value="InProgress">In Progress</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                    <option value="Closed">Closed</option>
+                </select>
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+            <div>
+                <button type="button" id="btnClearFilter" class="btn-ptc-outline">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GRID CARD -->
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Claims Register</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="claims_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#claims_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: {
+                            url  : '@Url.Action("ClaimsRead", "Claim")',
+                            type : 'POST'
+                        },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                var sf = null, sd = null;
+                                if (data.sort && data.sort.length > 0) {
+                                    sf = data.sort[0].field;
+                                    sd = data.sort[0].dir;
+                                }
+                                return $.extend({
+                                    page: data.page, pageSize: data.pageSize,
+                                    sortField: sf, sortDir: sd,
+                                    searchText : $('#filterSearchText').val(),
+                                    claimType  : $('#filterClaimType').val(),
+                                    status     : $('#filterStatus').val()
+                                }, { __RequestVerificationToken: token });
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'ClaimId',
+                            fields: {
+                                ClaimId              : { type: 'number' },
+                                ClaimReferenceNumber : { type: 'string' },
+                                InsurerClaimNumber   : { type: 'string' },
+                                ClientName           : { type: 'string' },
+                                CoverNoteNumber      : { type: 'string' },
+                                RegistrationNumber   : { type: 'string' },
+                                ClaimDate            : { type: 'date' },
+                                ClaimType            : { type: 'string' },
+                                ClaimStatus          : { type: 'string' },
+                                EstimatedLossAmount  : { type: 'number' },
+                                ApprovedClaimAmount  : { type: 'number' },
+                                WorkshopName         : { type: 'string' },
+                                DocumentCount        : { type: 'number' }
+                            }
+                        }
+                    },
+                    pageSize: 15, serverPaging: true, serverSorting: true,
+                    sort: { field: 'ClaimId', dir: 'desc' },
+                    error: function (e) {
+                        var msg = 'An error occurred.';
+                        try {
+                            var p = JSON.parse(e.xhr.responseText);
+                            if (p.Errors && p.Errors.error && p.Errors.error.errors)
+                                msg = p.Errors.error.errors[0];
+                        } catch (ex) { }
+                        KSwal.error(msg);
+                    }
+                },
+                pageable : { pageSize: 15, pageSizes: [15, 30, 50], info: true },
+                sortable : true, scrollable: true, height: 560,
+                columns  : [
+                    {
+                        field: 'ClaimReferenceNumber',
+                        title: 'Claim Ref',
+                        width: 160,
+                        template: function (item) {
+                            var html = '<strong>' + kendo.htmlEncode(item.ClaimReferenceNumber) + '</strong>';
+                            if (item.InsurerClaimNumber) {
+                                html += '<br/><small class="text-muted">'
+                                     + kendo.htmlEncode(item.InsurerClaimNumber) + '</small>';
+                            }
+                            return html;
+                        }
+                    },
+                    {
+                        field: 'ClientName',
+                        title: 'Client / Policy',
+                        width: 210,
+                        template: function (item) {
+                            return kendo.htmlEncode(item.ClientName)
+                                + '<br/><small class="text-muted">'
+                                + kendo.htmlEncode(item.CoverNoteNumber)
+                                + (item.RegistrationNumber
+                                    ? ' — ' + kendo.htmlEncode(item.RegistrationNumber)
+                                    : '')
+                                + '</small>';
+                        }
+                    },
+                    {
+                        field: 'ClaimDate',
+                        title: 'Claim Date',
+                        width: 110,
+                        template: function (item) {
+                            return kendo.toString(kendo.parseDate(item.ClaimDate), 'dd/MM/yyyy');
+                        }
+                    },
+                    {
+                        field: 'ClaimType',
+                        title: 'Type',
+                        width: 120,
+                        template: function (item) {
+                            var labels = {
+                                OwnDamage   : 'Own Damage',
+                                ThirdParty  : 'Third Party',
+                                Theft       : 'Theft',
+                                Fire        : 'Fire',
+                                Natural     : 'Natural Disaster'
+                            };
+                            return labels[item.ClaimType] || item.ClaimType;
+                        }
+                    },
+                    {
+                        field: 'ClaimStatus',
+                        title: 'Status',
+                        width: 110,
+                        template: function (item) {
+                            var map = {
+                                Lodged    : 'badge-pending',
+                                InProgress: 'badge-pending',
+                                Approved  : 'badge-active',
+                                Rejected  : 'badge-expired',
+                                Closed    : 'badge-cancelled'
+                            };
+                            return '<span class="badge-status '
+                                + (map[item.ClaimStatus] || '') + '">'
+                                + item.ClaimStatus + '</span>';
+                        }
+                    },
+                    {
+                        field: 'EstimatedLossAmount',
+                        title: 'Est. Loss / Approved',
+                        width: 160,
+                        attributes: { style: 'text-align:right;' },
+                        template: function (item) {
+                            if (item.ApprovedClaimAmount) {
+                                return '<span class="text-success fw-semibold">RM '
+                                    + parseFloat(item.ApprovedClaimAmount).toFixed(2) + '</span>';
+                            }
+                            if (item.EstimatedLossAmount) {
+                                return '<span class="text-muted">~RM '
+                                    + parseFloat(item.EstimatedLossAmount).toFixed(2) + '</span>';
+                            }
+                            return '<span class="text-muted">—</span>';
+                        }
+                    },
+                    {
+                        field: 'DocumentCount',
+                        title: 'Docs',
+                        width: 70,
+                        attributes: { style: 'text-align:center;' },
+                        template: function (item) {
+                            return item.DocumentCount > 0
+                                ? '<span class="badge-status badge-active">'
+                                + item.DocumentCount + '</span>'
+                                : '<span class="text-muted">0</span>';
+                        }
+                    },
+                    {
+                        title   : 'Actions',
+                        width   : 90,
+                        sortable: false,
+                        template: function (item) {
+                            return '<a href="@Url.Action("EditClaim")/'
+                                + item.ClaimId
+                                + '" class="btn btn-sm btn-outline-secondary">'
+                                + '<i class="bi bi-pencil"></i></a>';
+                        }
+                    }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+            $('#btnClearFilter').on('click', function () {
+                $('#filterSearchText').val('');
+                $('#filterClaimType').val('All');
+                $('#filterStatus').val('All');
+                grid.dataSource.page(1);
+            });
+            $('#filterSearchText').on('keypress', function (e) {
+                if (e.which === 13) { $('#btnSearch').click(); }
+            });
+
+        });
+    </script>
+}

@@ -1,0 +1,145 @@
+﻿@{
+    ViewData["Title"] = "Commission Report";
+    var agents = (ViewBag.Agents as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Commission Report</h1>
+        <p class="page-subtitle">Agent commission earned by policy</p>
+    </div>
+    <div>
+        <button type="button" id="btnExportExcel" class="btn-ptc-outline">
+            <i class="bi bi-file-earmark-excel"></i> Export Excel
+        </button>
+    </div>
+</div>
+
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Start Date From</label>
+                <input type="date" id="filterDateFrom" class="form-control" />
+            </div>
+            <div>
+                <label class="form-label">Start Date To</label>
+                <input type="date" id="filterDateTo" class="form-control" />
+            </div>
+            <div>
+                <label class="form-label">Agent</label>
+                <select id="filterAgent" class="form-select">
+                    <option value="All">All Agents</option>
+                    @foreach (var ag in agents)
+                    {
+                        <option value="@ag.AgentCode">@ag.AgentCode — @ag.FullName</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Run
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Commission by Policy</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="report_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#report_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: { url: '@Url.Action("CommissionReportData", "FinancialReport")', type: 'POST' },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                return {
+                                    page: data.page, pageSize: data.pageSize,
+                                    dateFrom : $('#filterDateFrom').val(),
+                                    dateTo   : $('#filterDateTo').val(),
+                                    agentCode: $('#filterAgent').val(),
+                                    __RequestVerificationToken: token
+                                };
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'CoverNoteNumber',
+                            fields: {
+                                CoverNoteNumber  : { type: 'string' },
+                                ClientName       : { type: 'string' },
+                                InsurerName      : { type: 'string' },
+                                StartDate        : { type: 'date' },
+                                NetPremiumPayable: { type: 'number' },
+                                AgentCommission  : { type: 'number' },
+                                AgentCode        : { type: 'string' }
+                            }
+                        }
+                    },
+                    pageSize: 20, serverPaging: true
+                },
+                pageable : { pageSize: 20, pageSizes: [20, 50, 100], info: true },
+                sortable : false, scrollable: true, height: 520,
+                columns  : [
+                    { field: 'CoverNoteNumber',   title: 'Cover Note',      width: 160 },
+                    { field: 'ClientName',         title: 'Client',          width: 200 },
+                    { field: 'InsurerName',        title: 'Insurer',         width: 160 },
+                    {
+                        field: 'StartDate', title: 'Start Date', width: 110,
+                        template: function (i) {
+                            return kendo.toString(kendo.parseDate(i.StartDate), 'dd/MM/yyyy');
+                        }
+                    },
+                    {
+                        field: 'NetPremiumPayable', title: 'Net Premium', width: 140,
+                        attributes: { style: 'text-align:right;' },
+                        template: function (i) { return 'RM ' + parseFloat(i.NetPremiumPayable).toFixed(2); }
+                    },
+                    {
+                        field: 'AgentCommission', title: 'Commission (RM)', width: 150,
+                        attributes: { style: 'text-align:right; font-weight:700; color:var(--ims-accent);' },
+                        template: function (i) { return 'RM ' + parseFloat(i.AgentCommission).toFixed(2); }
+                    },
+                    { field: 'AgentCode', title: 'Agent', width: 100 }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+
+            $('#btnExportExcel').on('click', function () {
+                var form = $('<form method="post" '
+                    + 'action="@Url.Action("CommissionReportExcel", "FinancialReport")">'
+                    + '<input name="dateFrom"  value="' + $('#filterDateFrom').val() + '">'
+                    + '<input name="dateTo"    value="' + $('#filterDateTo').val() + '">'
+                    + '<input name="agentCode" value="' + $('#filterAgent').val() + '">'
+                    + '<input name="__RequestVerificationToken" '
+                    + 'value="' + $('input[name="__RequestVerificationToken"]').val() + '">'
+                    + '</form>');
+                $('body').append(form);
+                form.submit().remove();
+            });
+        });
+    </script>
+}

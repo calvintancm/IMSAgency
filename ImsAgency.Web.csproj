@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Remove="Views\Payment\RecordPayment.cshtml" />
     <Content Remove="Views\Shared\_Layout - NEWIMS.cshtml" />
   </ItemGroup>
 
@@ -35,13 +36,6 @@
   <ItemGroup>
     <Folder Include="Models\Auth\" />
     <Folder Include="Models\ViewModels\" />
-    <Folder Include="Views\Claim\" />
-    <Folder Include="Views\FinancialReport\" />
-    <Folder Include="Views\Security\" />
-    <Folder Include="Views\RenewalReport\" />
-    <Folder Include="Views\Report\" />
-    <Folder Include="Views\Payment\" />
-    <Folder Include="Views\Renewal\" />
   </ItemGroup>
 
 </Project>

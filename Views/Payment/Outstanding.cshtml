@@ -1,0 +1,188 @@
+﻿@{
+    ViewData["Title"] = "Outstanding Balances";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Outstanding Balances</h1>
+        <p class="page-subtitle">
+            Policies with unpaid or partially paid premiums
+        </p>
+    </div>
+</div>
+
+<!-- FILTER CARD -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:3fr auto auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Search</label>
+                <input type="text" id="filterSearchText" class="form-control"
+                       placeholder="Cover Note or Client Name" />
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+            <div>
+                <button type="button" id="btnClearFilter" class="btn-ptc-outline">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GRID -->
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Outstanding Balances</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="outstanding_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#outstanding_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: {
+                            url  : '@Url.Action("OutstandingRead", "Payment")',
+                            type : 'POST'
+                        },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                return {
+                                    page      : data.page,
+                                    pageSize  : data.pageSize,
+                                    searchText: $('#filterSearchText').val(),
+                                    __RequestVerificationToken: token
+                                };
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'PolicyId',
+                            fields: {
+                                PolicyId          : { type: 'number' },
+                                CoverNoteNumber   : { type: 'string' },
+                                ClientName        : { type: 'string' },
+                                RegistrationNumber: { type: 'string' },
+                                PolicyStatus      : { type: 'string' },
+                                NetPremiumPayable : { type: 'number' },
+                                TotalPaid         : { type: 'number' },
+                                OutstandingBalance: { type: 'number' }
+                            }
+                        }
+                    },
+                    pageSize    : 15,
+                    serverPaging: true
+                },
+                pageable : { pageSize: 15, pageSizes: [15, 30, 50], info: true },
+                sortable : false, scrollable: true, height: 500,
+                columns  : [
+                    {
+                        field: 'CoverNoteNumber',
+                        title: 'Cover Note',
+                        width: 160,
+                        template: function (item) {
+                            return '<a href="@Url.Action("Details", "Policy")/'
+                                + item.PolicyId + '" class="text-decoration-none fw-semibold">'
+                                + kendo.htmlEncode(item.CoverNoteNumber) + '</a>';
+                        }
+                    },
+                    {
+                        field: 'ClientName',
+                        title: 'Client',
+                        width: 220,
+                        template: function (item) {
+                            return kendo.htmlEncode(item.ClientName)
+                                + (item.RegistrationNumber
+                                    ? '<br/><small class="text-muted">'
+                                    + kendo.htmlEncode(item.RegistrationNumber) + '</small>'
+                                    : '');
+                        }
+                    },
+                    {
+                        field: 'PolicyStatus',
+                        title: 'Status',
+                        width: 100,
+                        template: function (item) {
+                            var map = {
+                                Active: 'badge-active', Quoted: 'badge-pending',
+                                Draft: 'badge-pending'
+                            };
+                            return '<span class="badge-status '
+                                + (map[item.PolicyStatus] || '') + '">'
+                                + item.PolicyStatus + '</span>';
+                        }
+                    },
+                    {
+                        field: 'NetPremiumPayable',
+                        title: 'Net Premium',
+                        width: 140,
+                        attributes: { style: 'text-align:right;' },
+                        template: function (item) {
+                            return 'RM ' + parseFloat(item.NetPremiumPayable).toFixed(2);
+                        }
+                    },
+                    {
+                        field: 'TotalPaid',
+                        title: 'Total Paid',
+                        width: 130,
+                        attributes: { style: 'text-align:right; color:var(--ims-accent);' },
+                        template: function (item) {
+                            return 'RM ' + parseFloat(item.TotalPaid).toFixed(2);
+                        }
+                    },
+                    {
+                        field: 'OutstandingBalance',
+                        title: 'Outstanding',
+                        width: 140,
+                        attributes: { style: 'text-align:right; color:var(--ims-danger); font-weight:700;' },
+                        template: function (item) {
+                            return 'RM ' + parseFloat(item.OutstandingBalance).toFixed(2);
+                        }
+                    },
+                    {
+                        title   : '',
+                        width   : 130,
+                        sortable: false,
+                        template: function (item) {
+                            return '<a href="@Url.Action("RecordPayment")'
+                                + '?policyId=' + item.PolicyId
+                                + '" class="btn btn-sm btn-outline-success">'
+                                + '<i class="bi bi-cash-coin"></i> Record Payment</a>';
+                        }
+                    }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+            $('#btnClearFilter').on('click', function () {
+                $('#filterSearchText').val('');
+                grid.dataSource.page(1);
+            });
+            $('#filterSearchText').on('keypress', function (e) {
+                if (e.which === 13) { $('#btnSearch').click(); }
+            });
+
+        });
+    </script>
+}

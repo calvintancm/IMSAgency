@@ -1,0 +1,92 @@
+﻿@model ImsAgency.Web.Models.ViewModels.RenewalListViewModel
+@{
+    ViewData["Title"] = "Renewal Pipeline";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Renewal Pipeline</h1>
+        <p class="page-subtitle">All active policies expiring within 90 days</p>
+    </div>
+</div>
+
+<!-- PIPELINE STAT STRIP -->
+<div style="display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:18px;">
+    <div class="stat-card stat-danger">
+        <div class="stat-label"><i class="bi bi-alarm"></i> Due in 7 Days</div>
+        <div class="stat-value">@Model.TotalDue7Days</div>
+    </div>
+    <div class="stat-card stat-danger">
+        <div class="stat-label"><i class="bi bi-clock-history"></i> Due in 30 Days</div>
+        <div class="stat-value">@Model.TotalDue30Days</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-label"><i class="bi bi-clock"></i> Due in 60 Days</div>
+        <div class="stat-value">@Model.TotalDue60Days</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-label"><i class="bi bi-calendar-range"></i> Due in 90 Days</div>
+        <div class="stat-value">@Model.TotalDue90Days</div>
+    </div>
+    <div class="stat-card stat-danger">
+        <div class="stat-label"><i class="bi bi-x-circle"></i> Expired</div>
+        <div class="stat-value">@Model.TotalExpired</div>
+    </div>
+    <div class="stat-card stat-accent">
+        <div class="stat-label"><i class="bi bi-whatsapp"></i> Notices Sent Today</div>
+        <div class="stat-value">@Model.TotalNoticesSentToday</div>
+    </div>
+</div>
+
+<!-- FILTER CARD -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:3fr auto auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Search</label>
+                <input type="text" id="filterSearchText" class="form-control"
+                       placeholder="Cover Note, Client Name, or Reg. No." />
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+            <div>
+                <button type="button" id="btnClearFilter" class="btn-ptc-outline">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GRID CARD -->
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Policies Expiring Within 90 Days</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="renewal_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = buildRenewalGrid(
+                '#renewal_grid',
+                '@Url.Action("AllRenewalsRead", "Renewal")',
+                null, null   // no fixed maxDays/minDays for the "all" view
+            );
+
+            bindSearchControls(grid);
+            bindReminderButton($('input[name="__RequestVerificationToken"]').val());
+
+        });
+    </script>
+}

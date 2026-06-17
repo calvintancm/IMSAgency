@@ -161,6 +161,11 @@
                                         data-cover-note="@item.CoverNoteNumber">
                                     <i class="bi bi-whatsapp"></i> Send Reminder
                                 </button>
+                                <a href="@Url.Action("RenewPolicy", "Policy")/@item.PolicyId"
+                                   class="btn btn-sm btn-outline-primary"
+                                   title="Clone as Renewal Policy">
+                                    <i class="bi bi-arrow-repeat"></i> Renew
+                                </a>
                             </td>
                         </tr>
                     }

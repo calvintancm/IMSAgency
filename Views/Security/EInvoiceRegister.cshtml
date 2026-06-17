@@ -1,0 +1,259 @@
+﻿@model ImsAgency.Web.Models.ViewModels.LhdnEInvoiceListViewModel
+@{
+    ViewData["Title"] = "LHDN e-Invoice Register";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">LHDN e-Invoice Register</h1>
+        <p class="page-subtitle">Malaysia MyInvois e-Invoice compliance tracker</p>
+    </div>
+</div>
+
+<!-- STAT STRIP -->
+<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px;">
+    <div class="stat-card">
+        <div class="stat-label"><i class="bi bi-file-earmark-check"></i> Total Invoices</div>
+        <div class="stat-value">@Model.TotalInvoices</div>
+    </div>
+    <div class="stat-card stat-accent">
+        <div class="stat-label"><i class="bi bi-check-circle"></i> Valid</div>
+        <div class="stat-value">@Model.ValidCount</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-label"><i class="bi bi-hourglass-split"></i> Pending</div>
+        <div class="stat-value">@Model.PendingCount</div>
+    </div>
+    <div class="stat-card stat-danger">
+        <div class="stat-label"><i class="bi bi-x-circle"></i> Rejected</div>
+        <div class="stat-value">@Model.RejectedCount</div>
+    </div>
+</div>
+
+<!-- FILTER -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:2fr 1fr auto auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Search</label>
+                <input type="text" id="filterSearchText" class="form-control"
+                       placeholder="Invoice No., Cover Note, Client, or LHDN UUID" />
+            </div>
+            <div>
+                <label class="form-label">Status</label>
+                <select id="filterStatus" class="form-select">
+                    <option value="All">All</option>
+                    <option value="Valid">Valid</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Rejected">Rejected</option>
+                </select>
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+            <div>
+                <button type="button" id="btnClearFilter" class="btn-ptc-outline">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GRID -->
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">e-Invoice Records</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="einvoice_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#einvoice_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: {
+                            url  : '@Url.Action("EInvoiceRead", "Security")',
+                            type : 'POST'
+                        },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                return {
+                                    page      : data.page,
+                                    pageSize  : data.pageSize,
+                                    searchText: $('#filterSearchText').val(),
+                                    status    : $('#filterStatus').val(),
+                                    __RequestVerificationToken: token
+                                };
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'PolicyId',
+                            fields: {
+                                PolicyId             : { type: 'number' },
+                                CoverNoteNumber      : { type: 'string' },
+                                ClientName           : { type: 'string' },
+                                InternalInvoiceNumber: { type: 'string' },
+                                LhdnUniqueId         : { type: 'string' },
+                                TransmittedAt        : { type: 'date' },
+                                ValidationStatus     : { type: 'string' },
+                                IrbmErrorMessage     : { type: 'string' },
+                                NetPremiumPayable    : { type: 'number' }
+                            }
+                        }
+                    },
+                    pageSize: 15, serverPaging: true
+                },
+                pageable : { pageSize: 15, pageSizes: [15, 30, 50], info: true },
+                sortable : false, scrollable: true, height: 520,
+                columns  : [
+                    {
+                        field: 'InternalInvoiceNumber',
+                        title: 'Invoice No.',
+                        width: 160,
+                        template: function (item) {
+                            return '<strong>' + kendo.htmlEncode(item.InternalInvoiceNumber) + '</strong>';
+                        }
+                    },
+                    {
+                        field: 'CoverNoteNumber',
+                        title: 'Policy',
+                        width: 160,
+                        template: function (item) {
+                            return '<a href="@Url.Action("Details", "Policy")/'
+                                + item.PolicyId + '" class="text-decoration-none">'
+                                + kendo.htmlEncode(item.CoverNoteNumber) + '</a>'
+                                + '<br/><small class="text-muted">'
+                                + kendo.htmlEncode(item.ClientName) + '</small>';
+                        }
+                    },
+                    {
+                        field: 'TransmittedAt',
+                        title: 'Transmitted',
+                        width: 140,
+                        template: function (item) {
+                            return kendo.toString(
+                                kendo.parseDate(item.TransmittedAt), 'dd/MM/yyyy HH:mm');
+                        }
+                    },
+                    {
+                        field: 'NetPremiumPayable',
+                        title: 'Amount (RM)',
+                        width: 130,
+                        attributes: { style: 'text-align:right;' },
+                        template: function (item) {
+                            return 'RM ' + parseFloat(item.NetPremiumPayable).toFixed(2);
+                        }
+                    },
+                    {
+                        field: 'ValidationStatus',
+                        title: 'Status',
+                        width: 120,
+                        template: function (item) {
+                            var map = {
+                                Valid    : 'badge-active',
+                                Pending  : 'badge-pending',
+                                Rejected : 'badge-expired'
+                            };
+                            return '<span class="badge-status '
+                                + (map[item.ValidationStatus] || '') + '">'
+                                + item.ValidationStatus + '</span>';
+                        }
+                    },
+                    {
+                        field: 'LhdnUniqueId',
+                        title: 'LHDN UUID',
+                        template: function (item) {
+                            if (!item.LhdnUniqueId)
+                                return '<span class="text-muted">—</span>';
+                            return '<small class="text-muted" title="'
+                                + kendo.htmlEncode(item.LhdnUniqueId) + '">'
+                                + item.LhdnUniqueId.substring(0, 24) + '...</small>';
+                        }
+                    },
+                    {
+                        field: 'IrbmErrorMessage',
+                        title: 'IRBM Error',
+                        width: 200,
+                        template: function (item) {
+                            if (!item.IrbmErrorMessage)
+                                return '<span class="text-muted">—</span>';
+                            return '<small class="text-danger">'
+                                + kendo.htmlEncode(item.IrbmErrorMessage) + '</small>';
+                        }
+                    },
+                    {
+                        title   : 'Actions',
+                        width   : 110,
+                        sortable: false,
+                        template: function (item) {
+                            if (item.ValidationStatus !== 'Pending')
+                                return '';
+                            return '<button type="button" '
+                                + 'class="btn btn-sm btn-outline-success btn-mark-valid" '
+                                + 'data-id="' + item.PolicyId + '" '
+                                + 'title="Mark as Valid (Demo)">'
+                                + '<i class="bi bi-check-circle"></i> Validate</button>';
+                        }
+                    }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+            $('#btnClearFilter').on('click', function () {
+                $('#filterSearchText').val('');
+                $('#filterStatus').val('All');
+                grid.dataSource.page(1);
+            });
+            $('#filterSearchText').on('keypress', function (e) {
+                if (e.which === 13) { $('#btnSearch').click(); }
+            });
+
+            // Mark Pending as Valid (demo simulation)
+            $("#einvoice_grid").on("click", ".btn-mark-valid", function () {
+                var policyId = $(this).data('id');
+
+                KSwal.confirm(
+                    'Simulate LHDN validation — mark this invoice as Valid?',
+                    'Validate e-Invoice'
+                ).then(function (r) {
+                    if (!r.isConfirmed) return;
+
+                    $.post('@Url.Action("EInvoiceUpdateStatus", "Security")', {
+                        PolicyId        : policyId,
+                        ValidationStatus: 'Valid',
+                        IrbmErrorMessage: null,
+                        __RequestVerificationToken:
+                            $('input[name="__RequestVerificationToken"]').val()
+                    }).done(function (res) {
+                        if (res.Errors) KSwal.error(res.Errors.error.errors[0]);
+                        else {
+                            KSwal.success('e-Invoice marked as Valid.');
+                            grid.dataSource.read();
+                        }
+                    });
+                });
+            });
+
+        });
+    </script>
+}

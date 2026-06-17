@@ -1,4 +1,5 @@
-@model ImsAgency.Web.ViewModels.Auth.LoginViewModel
+@using ImsAgency.Web.ViewModels
+@model LoginViewModel
 @{
     ViewData["Title"] = "Sign In";
     Layout = null;
@@ -985,7 +986,7 @@
                     </div>
                 }
 
-                @using (Html.BeginForm("Login", "Auth", new { ReturnUrl = ViewBag.ReturnUrl },
+                @using (Html.BeginForm("Login", "Account", new { ReturnUrl = ViewBag.ReturnUrl },
                                 FormMethod.Post, null, new { id = "loginForm", autocomplete = "off" }))
                 {
                     @Html.AntiForgeryToken()

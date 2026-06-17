@@ -1,0 +1,168 @@
+﻿@{
+    ViewData["Title"] = "Expiry Schedule";
+    var insurers = (ViewBag.Insurers as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
+    var policyClasses = (ViewBag.PolicyClasses as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Policy Expiry Schedule</h1>
+        <p class="page-subtitle">Active policies expiring within a selected window</p>
+    </div>
+    <div>
+        <button type="button" id="btnExportExcel" class="btn-ptc-outline">
+            <i class="bi bi-file-earmark-excel"></i> Export Excel
+        </button>
+    </div>
+</div>
+
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Expiry Window (Days)</label>
+                <select id="filterExpiryDays" class="form-select">
+                    <option value="30">Next 30 Days</option>
+                    <option value="60">Next 60 Days</option>
+                    <option value="90" selected>Next 90 Days</option>
+                    <option value="180">Next 180 Days</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Insurer</label>
+                <select id="filterInsurer" class="form-select">
+                    <option value="0">All Insurers</option>
+                    @foreach (var ins in insurers)
+                    {
+                        <option value="@ins.InsurerId">@ins.InsurerName</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Policy Class</label>
+                <select id="filterClass" class="form-select">
+                    <option value="All">All Classes</option>
+                    @foreach (var pc in policyClasses)
+                    {
+                        <option value="@pc.ClassCode">@pc.ClassName</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Run
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Expiry Schedule</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="report_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#report_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: { url: '@Url.Action("ExpiryScheduleData", "Report")', type: 'POST' },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                return {
+                                    page: data.page, pageSize: data.pageSize,
+                                    expiryDays     : $('#filterExpiryDays').val(),
+                                    insurerId2     : $('#filterInsurer').val(),
+                                    policyClassCode: $('#filterClass').val(),
+                                    __RequestVerificationToken: token
+                                };
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'PolicyId',
+                            fields: {
+                                PolicyId          : { type: 'number' },
+                                CoverNoteNumber   : { type: 'string' },
+                                ClientName        : { type: 'string' },
+                                RegistrationNumber: { type: 'string' },
+                                InsurerName       : { type: 'string' },
+                                PolicyClassName   : { type: 'string' },
+                                ExpiryDate        : { type: 'date' },
+                                DaysToExpiry      : { type: 'number' },
+                                NetPremiumPayable : { type: 'number' },
+                                RenewalReminderCount: { type: 'number' },
+                                AgentCode         : { type: 'string' }
+                            }
+                        }
+                    },
+                    pageSize: 20, serverPaging: true
+                },
+                pageable : { pageSize: 20, pageSizes: [20, 50, 100], info: true },
+                sortable : false, scrollable: true, height: 540,
+                columns  : [
+                    { field: 'CoverNoteNumber', title: 'Cover Note', width: 155 },
+                    { field: 'ClientName',       title: 'Client',    width: 200 },
+                    { field: 'RegistrationNumber', title: 'Vehicle', width: 120,
+                      template: function (i) { return i.RegistrationNumber || '—'; } },
+                    { field: 'InsurerName',      title: 'Insurer',   width: 160 },
+                    { field: 'PolicyClassName',  title: 'Class',     width: 140 },
+                    {
+                        field: 'ExpiryDate', title: 'Expiry Date', width: 120,
+                        template: function (item) {
+                            return kendo.toString(kendo.parseDate(item.ExpiryDate), 'dd/MM/yyyy');
+                        }
+                    },
+                    {
+                        field: 'DaysToExpiry', title: 'Days Left', width: 100,
+                        attributes: { style: 'text-align:center;' },
+                        template: function (item) {
+                            var color = item.DaysToExpiry < 30  ? '#dc2626'
+                                      : item.DaysToExpiry <= 60 ? '#d97706' : '#16a34a';
+                            return '<span style="color:' + color + '; font-weight:700;">'
+                                + item.DaysToExpiry + '</span>';
+                        }
+                    },
+                    {
+                        field: 'NetPremiumPayable', title: 'Net Premium', width: 130,
+                        attributes: { style: 'text-align:right;' },
+                        template: function (i) { return 'RM ' + parseFloat(i.NetPremiumPayable).toFixed(2); }
+                    },
+                    { field: 'RenewalReminderCount', title: 'Reminders', width: 95,
+                      attributes: { style: 'text-align:center;' } },
+                    { field: 'AgentCode', title: 'Agent', width: 90 }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+
+            $('#btnExportExcel').on('click', function () {
+                var form = $('<form method="post" action="@Url.Action("ExpiryScheduleExcel", "Report")">'
+                    + '<input name="expiryDays" value="' + $('#filterExpiryDays').val() + '">'
+                    + '<input name="__RequestVerificationToken" '
+                    + 'value="' + $('input[name="__RequestVerificationToken"]').val() + '">'
+                    + '</form>');
+                $('body').append(form);
+                form.submit().remove();
+            });
+        });
+    </script>
+}

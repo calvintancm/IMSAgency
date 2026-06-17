@@ -1,0 +1,152 @@
+﻿@{
+    ViewData["Title"] = "Notice History";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Renewal Notice History</h1>
+        <p class="page-subtitle">All renewal reminders sent — filterable by date and channel</p>
+    </div>
+    <div>
+        <button type="button" id="btnExportExcel" class="btn-ptc-outline">
+            <i class="bi bi-file-earmark-excel"></i> Export Excel
+        </button>
+    </div>
+</div>
+
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Sent Date From</label>
+                <input type="date" id="filterDateFrom" class="form-control" />
+            </div>
+            <div>
+                <label class="form-label">Sent Date To</label>
+                <input type="date" id="filterDateTo" class="form-control" />
+            </div>
+            <div>
+                <label class="form-label">Channel</label>
+                <select id="filterChannel" class="form-select">
+                    <option value="All">All Channels</option>
+                    <option value="WhatsApp">WhatsApp</option>
+                    <option value="SMS">SMS</option>
+                    <option value="Email">Email</option>
+                    <option value="Letter">Letter</option>
+                </select>
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Run
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Notice History</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="report_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#report_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: { url: '@Url.Action("NoticeHistoryData", "RenewalReport")', type: 'POST' },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                return {
+                                    page: data.page, pageSize: data.pageSize,
+                                    dateFrom: $('#filterDateFrom').val(),
+                                    dateTo  : $('#filterDateTo').val(),
+                                    channel : $('#filterChannel').val(),
+                                    __RequestVerificationToken: token
+                                };
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'NoticeId',
+                            fields: {
+                                NoticeId       : { type: 'number' },
+                                CoverNoteNumber: { type: 'string' },
+                                ClientName     : { type: 'string' },
+                                NoticeType     : { type: 'string' },
+                                SentAt         : { type: 'date' },
+                                Channel        : { type: 'string' },
+                                PhoneOrEmail   : { type: 'string' },
+                                IsDelivered    : { type: 'boolean' },
+                                AgentNote      : { type: 'string' }
+                            }
+                        }
+                    },
+                    pageSize: 20, serverPaging: true
+                },
+                pageable : { pageSize: 20, pageSizes: [20, 50, 100], info: true },
+                sortable : false, scrollable: true, height: 520,
+                columns  : [
+                    {
+                        field: 'SentAt', title: 'Sent At', width: 140,
+                        template: function (i) {
+                            return kendo.toString(kendo.parseDate(i.SentAt), 'dd/MM/yyyy HH:mm');
+                        }
+                    },
+                    { field: 'CoverNoteNumber', title: 'Cover Note', width: 160 },
+                    { field: 'ClientName',       title: 'Client',    width: 200 },
+                    { field: 'NoticeType',       title: 'Type',      width: 90 },
+                    { field: 'Channel',          title: 'Channel',   width: 110 },
+                    { field: 'PhoneOrEmail',     title: 'Recipient', width: 160 },
+                    {
+                        field: 'IsDelivered', title: 'Status', width: 100,
+                        template: function (i) {
+                            return i.IsDelivered
+                                ? '<span class="badge-status badge-active">Delivered</span>'
+                                : '<span class="badge-status badge-pending">Pending</span>';
+                        }
+                    },
+                    { field: 'AgentNote', title: 'Agent Note',
+                      template: function (i) {
+                          return i.AgentNote
+                              ? '<small>' + kendo.htmlEncode(i.AgentNote) + '</small>'
+                              : '<span class="text-muted">—</span>';
+                      }
+                    }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+
+            $('#btnExportExcel').on('click', function () {
+                var form = $('<form method="post" '
+                    + 'action="@Url.Action("NoticeHistoryExcel", "RenewalReport")">'
+                    + '<input name="dateFrom" value="' + $('#filterDateFrom').val() + '">'
+                    + '<input name="dateTo"   value="' + $('#filterDateTo').val() + '">'
+                    + '<input name="channel"  value="' + $('#filterChannel').val() + '">'
+                    + '<input name="__RequestVerificationToken" '
+                    + 'value="' + $('input[name="__RequestVerificationToken"]').val() + '">'
+                    + '</form>');
+                $('body').append(form);
+                form.submit().remove();
+            });
+        });
+    </script>
+}

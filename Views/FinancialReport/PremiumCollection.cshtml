@@ -1,0 +1,154 @@
+﻿@{
+    ViewData["Title"] = "Premium Collection";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Premium Collection Report</h1>
+        <p class="page-subtitle">Payments received filtered by date and method</p>
+    </div>
+    <div>
+        <button type="button" id="btnExportExcel" class="btn-ptc-outline">
+            <i class="bi bi-file-earmark-excel"></i> Export Excel
+        </button>
+    </div>
+</div>
+
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Payment Date From</label>
+                <input type="date" id="filterDateFrom" class="form-control" />
+            </div>
+            <div>
+                <label class="form-label">Payment Date To</label>
+                <input type="date" id="filterDateTo" class="form-control" />
+            </div>
+            <div>
+                <label class="form-label">Payment Method</label>
+                <select id="filterMethod" class="form-select">
+                    <option value="All">All Methods</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="FPX">FPX</option>
+                    <option value="CreditCard">Credit Card</option>
+                    <option value="DuitNowQR">DuitNow QR</option>
+                </select>
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Run
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Premium Collection</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="report_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#report_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: { url: '@Url.Action("PremiumCollectionData", "FinancialReport")', type: 'POST' },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                return {
+                                    page: data.page, pageSize: data.pageSize,
+                                    dateFrom     : $('#filterDateFrom').val(),
+                                    dateTo       : $('#filterDateTo').val(),
+                                    paymentMethod: $('#filterMethod').val(),
+                                    __RequestVerificationToken: token
+                                };
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'PaymentId',
+                            fields: {
+                                PaymentId          : { type: 'number' },
+                                ReceiptNumber      : { type: 'string' },
+                                ClientName         : { type: 'string' },
+                                CoverNoteNumber    : { type: 'string' },
+                                InsurerName        : { type: 'string' },
+                                PaymentDate        : { type: 'date' },
+                                PaymentMethod      : { type: 'string' },
+                                AmountPaid         : { type: 'number' },
+                                IsClearedAndSettled: { type: 'boolean' },
+                                RecordedBy         : { type: 'string' }
+                            }
+                        }
+                    },
+                    pageSize: 20, serverPaging: true
+                },
+                pageable : { pageSize: 20, pageSizes: [20, 50, 100], info: true },
+                sortable : false, scrollable: true, height: 540,
+                columns  : [
+                    { field: 'ReceiptNumber',   title: 'Receipt',   width: 150 },
+                    { field: 'ClientName',      title: 'Client',    width: 200 },
+                    { field: 'CoverNoteNumber', title: 'Cover Note',width: 160 },
+                    { field: 'InsurerName',     title: 'Insurer',   width: 160 },
+                    {
+                        field: 'PaymentDate', title: 'Date', width: 110,
+                        template: function (i) {
+                            return kendo.toString(kendo.parseDate(i.PaymentDate), 'dd/MM/yyyy');
+                        }
+                    },
+                    { field: 'PaymentMethod', title: 'Method', width: 120 },
+                    {
+                        field: 'AmountPaid', title: 'Amount (RM)', width: 130,
+                        attributes: { style: 'text-align:right; font-weight:600;' },
+                        template: function (i) { return 'RM ' + parseFloat(i.AmountPaid).toFixed(2); }
+                    },
+                    {
+                        field: 'IsClearedAndSettled', title: 'Cleared', width: 90,
+                        template: function (i) {
+                            return i.IsClearedAndSettled
+                                ? '<span class="badge-status badge-active">Yes</span>'
+                                : '<span class="badge-status badge-pending">No</span>';
+                        }
+                    },
+                    { field: 'RecordedBy', title: 'Recorded By', width: 130,
+                      template: function (i) { return i.RecordedBy || '—'; } }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+
+            $('#btnExportExcel').on('click', function () {
+                var form = $('<form method="post" '
+                    + 'action="@Url.Action("PremiumCollectionExcel", "FinancialReport")">'
+                    + '<input name="dateFrom"      value="' + $('#filterDateFrom').val() + '">'
+                    + '<input name="dateTo"        value="' + $('#filterDateTo').val() + '">'
+                    + '<input name="paymentMethod" value="' + $('#filterMethod').val() + '">'
+                    + '<input name="__RequestVerificationToken" '
+                    + 'value="' + $('input[name="__RequestVerificationToken"]').val() + '">'
+                    + '</form>');
+                $('body').append(form);
+                form.submit().remove();
+            });
+        });
+    </script>
+}

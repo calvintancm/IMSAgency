@@ -20,12 +20,12 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
-    options.LoginPath = "/Auth/Login";
-    options.LogoutPath = "/Auth/Logout";
-    options.AccessDeniedPath = "/Auth/AccessDenied";
+    options.LoginPath = "/Account/Login";
+    options.LogoutPath = "/Account/Logout";
+    options.AccessDeniedPath = "/Account/AccessDenied";
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
     options.SlidingExpiration = true;
-    options.Cookie.Name = "ImsAgency.Auth";
+    options.Cookie.Name = "ImsAgency.Account";
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Lax;
 });
@@ -83,7 +83,7 @@ app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Auth}/{action=Login}/{id?}");
+    pattern: "{controller=Account}/{action=Login}/{id?}");
 
 var supportedCultures = new[] { "en" };
 var localizationOptions = new RequestLocalizationOptions()

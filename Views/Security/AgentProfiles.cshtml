@@ -1,0 +1,230 @@
+﻿@{
+    ViewData["Title"] = "Agent Profiles";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Agent Profiles</h1>
+        <p class="page-subtitle">Staff and agent register — PIA/PIAM licensed agents</p>
+    </div>
+    <div>
+        <button type="button" id="btnAddAgent" class="btn-ptc-primary">
+            <i class="bi bi-plus-lg"></i> Add Agent Profile
+        </button>
+    </div>
+</div>
+
+<!-- FILTER -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:2fr 1fr auto auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Search</label>
+                <input type="text" id="filterSearchText" class="form-control"
+                       placeholder="Agent Code, Name, or Email" />
+            </div>
+            <div>
+                <label class="form-label">Type</label>
+                <select id="filterAgentType" class="form-select">
+                    <option value="All">All Types</option>
+                    <option value="Admin">Admin</option>
+                    <option value="SeniorAgent">Senior Agent</option>
+                    <option value="Agent">Agent</option>
+                    <option value="Support">Support</option>
+                </select>
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+            <div>
+                <button type="button" id="btnClearFilter" class="btn-ptc-outline">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GRID -->
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Agent Profile Register</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="agent_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            function getFilters() {
+                return {
+                    searchText: $('#filterSearchText').val(),
+                    agentType : $('#filterAgentType').val()
+                };
+            }
+
+            var grid = $("#agent_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read   : { url: '@Url.Action("AgentProfilesRead", "Security")',  type: 'POST' },
+                        update : { url: '@Url.Action("AgentProfilesSave", "Security")',  type: 'POST' },
+                        create : { url: '@Url.Action("AgentProfilesSave", "Security")',  type: 'POST' },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                return $.extend({
+                                    page: data.page, pageSize: data.pageSize
+                                }, getFilters(), { __RequestVerificationToken: token });
+                            }
+                            if (data.models && data.models.length > 0) {
+                                return $.extend({}, data.models[0],
+                                    { __RequestVerificationToken: token });
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'AgentId',
+                            fields: {
+                                AgentId           : { type: 'number',  editable: false },
+                                AgentCode         : { type: 'string',  validation: { required: true } },
+                                FullName          : { type: 'string',  validation: { required: true } },
+                                AgentType         : { type: 'string',  defaultValue: 'Agent' },
+                                Email             : { type: 'string',  validation: { required: true } },
+                                MobileNumber      : { type: 'string' },
+                                LicenseNumber     : { type: 'string' },
+                                LicenseExpiryDate : { type: 'date' },
+                                JoinedDate        : { type: 'date' },
+                                IsActive          : { type: 'boolean', defaultValue: true },
+                                IsLinkedToLogin   : { type: 'boolean', editable: false }
+                            }
+                        }
+                    },
+                    pageSize: 15, serverPaging: true,
+                    error: function (e) {
+                        var msg = 'An error occurred.';
+                        try {
+                            var p = JSON.parse(e.xhr.responseText);
+                            if (p.Errors && p.Errors.error && p.Errors.error.errors)
+                                msg = p.Errors.error.errors[0];
+                        } catch (ex) { }
+                        KSwal.error(msg);
+                        this.cancelChanges();
+                    }
+                },
+                pageable : { pageSize: 15, pageSizes: [15, 30, 50], info: true },
+                sortable : false, scrollable: true, height: 540,
+                editable : 'inline',
+                toolbar  : [],
+                columns  : [
+                    { field: 'AgentCode', title: 'Code',      width: 100 },
+                    { field: 'FullName',  title: 'Full Name', width: 200 },
+                    {
+                        field: 'AgentType',
+                        title: 'Type',
+                        width: 120,
+                        editor: agentTypeDropdown,
+                        template: function (item) {
+                            var map = {
+                                Admin      : 'badge-expired',
+                                SeniorAgent: 'badge-active',
+                                Agent      : 'badge-pending',
+                                Support    : 'badge-cancelled'
+                            };
+                            return '<span class="badge-status '
+                                + (map[item.AgentType] || '') + '">'
+                                + item.AgentType + '</span>';
+                        }
+                    },
+                    { field: 'Email',        title: 'Email',    width: 200 },
+                    { field: 'MobileNumber', title: 'Mobile',   width: 130 },
+                    { field: 'LicenseNumber',title: 'License',  width: 130,
+                      template: function (i) { return i.LicenseNumber || '—'; } },
+                    {
+                        field: 'LicenseExpiryDate',
+                        title: 'Lic. Expiry',
+                        width: 110,
+                        template: function (item) {
+                            if (!item.LicenseExpiryDate)
+                                return '<span class="text-muted">—</span>';
+                            var d = kendo.toString(
+                                kendo.parseDate(item.LicenseExpiryDate), 'dd/MM/yyyy');
+                            var expired = new Date(item.LicenseExpiryDate) < new Date();
+                            return '<span style="color:' + (expired ? 'var(--ims-danger)' : '') + ';">'
+                                + d + '</span>';
+                        }
+                    },
+                    {
+                        field: 'IsLinkedToLogin',
+                        title: 'Login',
+                        width: 90,
+                        template: function (item) {
+                            return item.IsLinkedToLogin
+                                ? '<i class="bi bi-check-circle-fill text-success" title="Has login account"></i>'
+                                : '<i class="bi bi-x-circle text-muted" title="No login account"></i>';
+                        }
+                    },
+                    {
+                        field: 'IsActive',
+                        title: 'Active',
+                        width: 85,
+                        template: function (item) {
+                            return item.IsActive
+                                ? '<span class="badge-status badge-active">Yes</span>'
+                                : '<span class="badge-status badge-cancelled">No</span>';
+                        }
+                    },
+                    { command: ['edit'], title: '', width: 90 }
+                ]
+            }).data("kendoGrid");
+
+            $('#btnAddAgent').on('click', function () { grid.addRow(); });
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            function agentTypeDropdown(container, options) {
+                $('<input name="' + options.field + '"/>')
+                    .appendTo(container)
+                    .kendoDropDownList({
+                        dataSource: ['Admin', 'SeniorAgent', 'Agent', 'Support'],
+                        value     : options.model.AgentType
+                    });
+            }
+
+            // Delete confirmation
+            $("#agent_grid").on("click", ".k-grid-delete", function (e) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                var row  = $(this).closest("tr");
+                var item = grid.dataItem(row);
+                KSwal.confirmDelete("Delete agent profile for " + item.FullName + "?")
+                    .then(function (r) {
+                        if (r.isConfirmed) grid.removeRow(row);
+                    });
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+            $('#btnClearFilter').on('click', function () {
+                $('#filterSearchText').val('');
+                $('#filterAgentType').val('All');
+                grid.dataSource.page(1);
+            });
+            $('#filterSearchText').on('keypress', function (e) {
+                if (e.which === 13) { $('#btnSearch').click(); }
+            });
+
+        });
+    </script>
+}

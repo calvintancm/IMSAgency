@@ -1,0 +1,223 @@
+﻿@{
+    ViewData["Title"] = "Pending Claims";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Pending Claims</h1>
+        <p class="page-subtitle">Open claims — Lodged or In Progress</p>
+    </div>
+    <div>
+        <a href="@Url.Action("LodgeClaim")" class="btn-ptc-primary">
+            <i class="bi bi-plus-lg"></i> Lodge New Claim
+        </a>
+    </div>
+</div>
+
+<!-- FILTER -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:3fr auto auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Search</label>
+                <input type="text" id="filterSearchText" class="form-control"
+                       placeholder="Claim Ref, Cover Note, or Client" />
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+            <div>
+                <button type="button" id="btnClearFilter" class="btn-ptc-outline">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GRID -->
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Pending Claims</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="pending_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#pending_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: {
+                            url  : '@Url.Action("PendingClaimsRead", "Claim")',
+                            type : 'POST'
+                        },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                return {
+                                    page      : data.page,
+                                    pageSize  : data.pageSize,
+                                    searchText: $('#filterSearchText').val(),
+                                    __RequestVerificationToken: token
+                                };
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'ClaimId',
+                            fields: {
+                                ClaimId              : { type: 'number' },
+                                ClaimReferenceNumber : { type: 'string' },
+                                InsurerClaimNumber   : { type: 'string' },
+                                ClientName           : { type: 'string' },
+                                CoverNoteNumber      : { type: 'string' },
+                                RegistrationNumber   : { type: 'string' },
+                                ClaimDate            : { type: 'date' },
+                                ReportedDate         : { type: 'date' },
+                                ClaimType            : { type: 'string' },
+                                ClaimStatus          : { type: 'string' },
+                                EstimatedLossAmount  : { type: 'number' },
+                                DocumentCount        : { type: 'number' },
+                                DaysOpen             : { type: 'number' }
+                            }
+                        }
+                    },
+                    pageSize: 15, serverPaging: true
+                },
+                pageable : { pageSize: 15, pageSizes: [15, 30, 50], info: true },
+                sortable : false, scrollable: true, height: 500,
+                columns  : [
+                    {
+                        field: 'ClaimReferenceNumber',
+                        title: 'Claim Ref',
+                        width: 160,
+                        template: function (item) {
+                            return '<strong>' + kendo.htmlEncode(item.ClaimReferenceNumber) + '</strong>';
+                        }
+                    },
+                    {
+                        field: 'ClientName',
+                        title: 'Client / Policy',
+                        width: 210,
+                        template: function (item) {
+                            return kendo.htmlEncode(item.ClientName)
+                                + '<br/><small class="text-muted">'
+                                + kendo.htmlEncode(item.CoverNoteNumber)
+                                + (item.RegistrationNumber
+                                    ? ' — ' + kendo.htmlEncode(item.RegistrationNumber)
+                                    : '')
+                                + '</small>';
+                        }
+                    },
+                    {
+                        field: 'ClaimDate',
+                        title: 'Claim Date',
+                        width: 110,
+                        template: function (item) {
+                            return kendo.toString(kendo.parseDate(item.ClaimDate), 'dd/MM/yyyy');
+                        }
+                    },
+                    {
+                        field: 'ClaimType',
+                        title: 'Type',
+                        width: 130,
+                        template: function (item) {
+                            var labels = {
+                                OwnDamage  : 'Own Damage',
+                                ThirdParty : 'Third Party',
+                                Theft      : 'Theft',
+                                Fire       : 'Fire',
+                                Natural    : 'Natural Disaster'
+                            };
+                            return labels[item.ClaimType] || item.ClaimType;
+                        }
+                    },
+                    {
+                        field: 'ClaimStatus',
+                        title: 'Status',
+                        width: 110,
+                        template: function (item) {
+                            return item.ClaimStatus === 'InProgress'
+                                ? '<span class="badge-status badge-warning">In Progress</span>'
+                                : '<span class="badge-status badge-pending">Lodged</span>';
+                        }
+                    },
+                    {
+                        field: 'DaysOpen',
+                        title: 'Days Open',
+                        width: 100,
+                        attributes: { style: 'text-align:center;' },
+                        template: function (item) {
+                            var color = item.DaysOpen > 30 ? 'var(--ims-danger)'
+                                      : item.DaysOpen > 14 ? 'var(--ims-warning)'
+                                      : 'var(--ims-text)';
+                            return '<span style="font-weight:700; color:' + color + ';">'
+                                + item.DaysOpen + '</span>';
+                        }
+                    },
+                    {
+                        field: 'EstimatedLossAmount',
+                        title: 'Est. Loss',
+                        width: 130,
+                        attributes: { style: 'text-align:right;' },
+                        template: function (item) {
+                            return item.EstimatedLossAmount
+                                ? 'RM ' + parseFloat(item.EstimatedLossAmount).toFixed(2)
+                                : '<span class="text-muted">—</span>';
+                        }
+                    },
+                    {
+                        field: 'DocumentCount',
+                        title: 'Docs',
+                        width: 70,
+                        attributes: { style: 'text-align:center;' },
+                        template: function (item) {
+                            return item.DocumentCount > 0
+                                ? '<span class="badge-status badge-active">'
+                                + item.DocumentCount + '</span>'
+                                : '<span class="badge-status badge-expired">0</span>';
+                        }
+                    },
+                    {
+                        title   : '',
+                        width   : 90,
+                        sortable: false,
+                        template: function (item) {
+                            return '<a href="@Url.Action("EditClaim")/'
+                                + item.ClaimId
+                                + '" class="btn btn-sm btn-outline-secondary">'
+                                + '<i class="bi bi-pencil"></i> Update</a>';
+                        }
+                    }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+            $('#btnClearFilter').on('click', function () {
+                $('#filterSearchText').val('');
+                grid.dataSource.page(1);
+            });
+            $('#filterSearchText').on('keypress', function (e) {
+                if (e.which === 13) { $('#btnSearch').click(); }
+            });
+
+        });
+    </script>
+}

@@ -78,7 +78,7 @@
                 <p class="fsub">Sign in to access the Insurance Agency Management system.</p>
             </div>
 
-            @using (Html.BeginForm("Login", "Auth", FormMethod.Post, new { @class = "login-form" }))
+                @using (Html.BeginForm("Login", "Account", FormMethod.Post, new { @class = "login-form" }))
             {
                 @Html.AntiForgeryToken()
                 @Html.ValidationSummary(true, "", new { @class = "alert-danger" })
@@ -108,7 +108,7 @@
                     <label class="rem-me">
                         @Html.CheckBox("RememberMe") Remember me 8 hrs
                     </label>
-                    @Html.ActionLink("Forgot password?", "ForgotPassword", "Auth", null, new { @class = "fp-link" })
+                        @Html.ActionLink("Forgot password?", "ForgotPassword", "Account", null, new { @class = "fp-link" })
                 </div>
 
                 <button type="submit" class="btn-login">

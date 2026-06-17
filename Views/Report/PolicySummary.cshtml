@@ -1,0 +1,222 @@
+﻿@{
+    ViewData["Title"] = "Policy Summary Report";
+    var insurers = (ViewBag.Insurers as IEnumerable<dynamic>)
+                        ?? Enumerable.Empty<dynamic>();
+    var policyClasses = (ViewBag.PolicyClasses as IEnumerable<dynamic>)
+                        ?? Enumerable.Empty<dynamic>();
+    var agents = (ViewBag.Agents as IEnumerable<dynamic>)
+                        ?? Enumerable.Empty<dynamic>();
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Policy Summary Report</h1>
+        <p class="page-subtitle">All policies — filterable by date, insurer, class, status</p>
+    </div>
+    <div>
+        <button type="button" id="btnExportExcel" class="btn-ptc-outline">
+            <i class="bi bi-file-earmark-excel"></i> Export Excel
+        </button>
+    </div>
+</div>
+
+<!-- FILTER CARD -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Start Date From</label>
+                <input type="date" id="filterDateFrom" class="form-control" />
+            </div>
+            <div>
+                <label class="form-label">Start Date To</label>
+                <input type="date" id="filterDateTo" class="form-control" />
+            </div>
+            <div>
+                <label class="form-label">Insurer</label>
+                <select id="filterInsurer" class="form-select">
+                    <option value="0">All Insurers</option>
+                    @foreach (var ins in insurers)
+                    {
+                        <option value="@ins.InsurerId">@ins.InsurerName</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Policy Class</label>
+                <select id="filterClass" class="form-select">
+                    <option value="All">All Classes</option>
+                    @foreach (var pc in policyClasses)
+                    {
+                        <option value="@pc.ClassCode">@pc.ClassName</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Status</label>
+                <select id="filterStatus" class="form-select">
+                    <option value="All">All</option>
+                    <option value="Active">Active</option>
+                    <option value="Expired">Expired</option>
+                    <option value="Quoted">Quoted</option>
+                    <option value="Cancelled">Cancelled</option>
+                </select>
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Run
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GRID -->
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Policy Summary</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="report_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            function getFilters() {
+                return {
+                    dateFrom       : $('#filterDateFrom').val(),
+                    dateTo         : $('#filterDateTo').val(),
+                    insurerId      : $('#filterInsurer').val(),
+                    policyClassCode: $('#filterClass').val(),
+                    status         : $('#filterStatus').val()
+                };
+            }
+
+            var grid = $("#report_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: {
+                            url  : '@Url.Action("PolicySummaryData", "Report")',
+                            type : 'POST'
+                        },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                return $.extend({
+                                    page: data.page, pageSize: data.pageSize
+                                }, getFilters(), { __RequestVerificationToken: token });
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'PolicyId',
+                            fields: {
+                                PolicyId          : { type: 'number' },
+                                CoverNoteNumber   : { type: 'string' },
+                                ClientName        : { type: 'string' },
+                                RegistrationNumber: { type: 'string' },
+                                InsurerName       : { type: 'string' },
+                                PolicyClassName   : { type: 'string' },
+                                PolicyStatus      : { type: 'string' },
+                                StartDate         : { type: 'date' },
+                                ExpiryDate        : { type: 'date' },
+                                NcdPercentage     : { type: 'number' },
+                                NetPremiumPayable : { type: 'number' },
+                                AgentCode         : { type: 'string' }
+                            }
+                        }
+                    },
+                    pageSize: 20, serverPaging: true
+                },
+                pageable : { pageSize: 20, pageSizes: [20, 50, 100], info: true },
+                sortable : false, scrollable: true, height: 540,
+                columns  : [
+                    { field: 'CoverNoteNumber', title: 'Cover Note', width: 160 },
+                    { field: 'ClientName', title: 'Client', width: 200 },
+                    {
+                        field: 'RegistrationNumber',
+                        title: 'Vehicle',
+                        width: 120,
+                        template: function (item) {
+                            return item.RegistrationNumber || '—';
+                        }
+                    },
+                    { field: 'InsurerName', title: 'Insurer', width: 170 },
+                    { field: 'PolicyClassName', title: 'Class', width: 150 },
+                    {
+                        field: 'PolicyStatus',
+                        title: 'Status',
+                        width: 100,
+                        template: function (item) {
+                            var map = {
+                                Active: 'badge-active', Expired: 'badge-expired',
+                                Quoted: 'badge-pending', Cancelled: 'badge-cancelled'
+                            };
+                            return '<span class="badge-status '
+                                + (map[item.PolicyStatus] || '') + '">'
+                                + item.PolicyStatus + '</span>';
+                        }
+                    },
+                    {
+                        field: 'StartDate',
+                        title: 'Start',
+                        width: 100,
+                        template: function (item) {
+                            return kendo.toString(kendo.parseDate(item.StartDate), 'dd/MM/yyyy');
+                        }
+                    },
+                    {
+                        field: 'ExpiryDate',
+                        title: 'Expiry',
+                        width: 100,
+                        template: function (item) {
+                            return kendo.toString(kendo.parseDate(item.ExpiryDate), 'dd/MM/yyyy');
+                        }
+                    },
+                    {
+                        field: 'NetPremiumPayable',
+                        title: 'Net Premium',
+                        width: 130,
+                        attributes: { style: 'text-align:right;' },
+                        template: function (item) {
+                            return 'RM ' + parseFloat(item.NetPremiumPayable).toFixed(2);
+                        }
+                    },
+                    { field: 'AgentCode', title: 'Agent', width: 90 }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+
+            // Excel export — POST with current filters
+            $('#btnExportExcel').on('click', function () {
+                var f = getFilters();
+                var form = $('<form method="post" action="@Url.Action("PolicySummaryExcel", "Report")">'
+                    + '<input name="dateFrom" value="' + (f.dateFrom || '') + '">'
+                    + '<input name="dateTo" value="' + (f.dateTo || '') + '">'
+                    + '<input name="insurerId" value="' + (f.insurerId || '') + '">'
+                    + '<input name="policyClassCode" value="' + (f.policyClassCode || '') + '">'
+                    + '<input name="status" value="' + (f.status || '') + '">'
+                    + '<input name="__RequestVerificationToken" '
+                    + 'value="' + $('input[name="__RequestVerificationToken"]').val() + '">'
+                    + '</form>');
+                $('body').append(form);
+                form.submit().remove();
+            });
+
+        });
+    </script>
+}

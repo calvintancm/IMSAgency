@@ -1,0 +1,235 @@
+﻿@{
+    ViewData["Title"] = "Renewal Notices Log";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Renewal Notices Log</h1>
+        <p class="page-subtitle">History of all renewal reminders sent to clients</p>
+    </div>
+</div>
+
+<!-- FILTER CARD -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid; grid-template-columns:2fr 1fr 1fr auto auto; gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Search</label>
+                <input type="text" id="filterSearchText" class="form-control"
+                       placeholder="Cover Note, Client, or Phone/Email" />
+            </div>
+            <div>
+                <label class="form-label">Channel</label>
+                <select id="filterChannel" class="form-select">
+                    <option value="All">All Channels</option>
+                    <option value="WhatsApp">WhatsApp</option>
+                    <option value="SMS">SMS</option>
+                    <option value="Email">Email</option>
+                    <option value="Letter">Letter</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Notice Type</label>
+                <select id="filterNoticeType" class="form-select">
+                    <option value="All">All Types</option>
+                    <option value="90Day">90 Day</option>
+                    <option value="60Day">60 Day</option>
+                    <option value="30Day">30 Day</option>
+                    <option value="7Day">7 Day</option>
+                    <option value="Expired">Expired</option>
+                </select>
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+            <div>
+                <button type="button" id="btnClearFilter" class="btn-ptc-outline">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GRID CARD -->
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Notice History</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="notices_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            var grid = $("#notices_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: {
+                            url  : '@Url.Action("NoticesLogRead", "Renewal")',
+                            type : 'POST'
+                        },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                return $.extend({
+                                    page          : data.page,
+                                    pageSize      : data.pageSize,
+                                    searchText    : $('#filterSearchText').val(),
+                                    channel       : $('#filterChannel').val(),
+                                    noticeType    : $('#filterNoticeType').val()
+                                }, { __RequestVerificationToken: token });
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'NoticeId',
+                            fields: {
+                                NoticeId        : { type: 'number' },
+                                CoverNoteNumber : { type: 'string' },
+                                ClientName      : { type: 'string' },
+                                RegistrationNumber: { type: 'string' },
+                                NoticeType      : { type: 'string' },
+                                SentAt          : { type: 'date' },
+                                Channel         : { type: 'string' },
+                                PhoneOrEmail    : { type: 'string' },
+                                MessageContent  : { type: 'string' },
+                                IsDelivered     : { type: 'boolean' },
+                                AgentNote       : { type: 'string' }
+                            }
+                        }
+                    },
+                    pageSize: 20, serverPaging: true
+                },
+                pageable : { pageSize: 20, pageSizes: [20, 50, 100], info: true },
+                sortable : false,
+                scrollable: true,
+                height   : 560,
+                columns  : [
+                    {
+                        field: 'SentAt',
+                        title: 'Sent At',
+                        width: 140,
+                        template: function (item) {
+                            return kendo.toString(kendo.parseDate(item.SentAt),
+                                'dd/MM/yyyy HH:mm');
+                        }
+                    },
+                    {
+                        field: 'CoverNoteNumber',
+                        title: 'Policy',
+                        width: 160,
+                        template: function (item) {
+                            return '<a href="@Url.Action("Details", "Policy")/'
+                                + item.PolicyId + '" class="text-decoration-none">'
+                                + kendo.htmlEncode(item.CoverNoteNumber) + '</a>'
+                                + '<br/><small class="text-muted">'
+                                + kendo.htmlEncode(item.ClientName) + '</small>';
+                        }
+                    },
+                    {
+                        field: 'NoticeType',
+                        title: 'Type',
+                        width: 90,
+                        template: function (item) {
+                            var color = item.NoticeType === '7Day'  ? '#dc2626'
+                                      : item.NoticeType === '30Day' ? '#d97706'
+                                      : '#0d6fa4';
+                            return '<span class="badge-status" style="background:'
+                                + color + '1A; color:' + color + ';">'
+                                + item.NoticeType + '</span>';
+                        }
+                    },
+                    {
+                        field: 'Channel',
+                        title: 'Channel',
+                        width: 110,
+                        template: function (item) {
+                            var icon = item.Channel === 'WhatsApp' ? 'bi-whatsapp'
+                                     : item.Channel === 'Email'    ? 'bi-envelope'
+                                     : item.Channel === 'SMS'      ? 'bi-chat-dots'
+                                     : 'bi-envelope-paper';
+                            return '<i class="bi ' + icon + '"></i> '
+                                + kendo.htmlEncode(item.Channel);
+                        }
+                    },
+                    {
+                        field: 'PhoneOrEmail',
+                        title: 'Recipient',
+                        width: 150
+                    },
+                    {
+                        field: 'IsDelivered',
+                        title: 'Status',
+                        width: 100,
+                        template: function (item) {
+                            return item.IsDelivered
+                                ? '<span class="badge-status badge-active">Delivered</span>'
+                                : '<span class="badge-status badge-pending">Pending</span>';
+                        }
+                    },
+                    {
+                        field: 'AgentNote',
+                        title: 'Agent Note',
+                        template: function (item) {
+                            if (!item.AgentNote) return '<span class="text-muted">—</span>';
+                            return '<small>' + kendo.htmlEncode(item.AgentNote) + '</small>';
+                        }
+                    },
+                    {
+                        title: '',
+                        width: 80,
+                        template: function (item) {
+                            if (!item.MessageContent) return '';
+                            return '<button type="button" '
+                                + 'class="btn btn-sm btn-outline-secondary btn-view-msg" '
+                                + 'data-msg="' + kendo.htmlEncode(item.MessageContent) + '">'
+                                + '<i class="bi bi-eye"></i>'
+                                + '</button>';
+                        }
+                    }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+            $('#btnClearFilter').on('click', function () {
+                $('#filterSearchText').val('');
+                $('#filterChannel').val('All');
+                $('#filterNoticeType').val('All');
+                grid.dataSource.page(1);
+            });
+            $('#filterSearchText').on('keypress', function (e) {
+                if (e.which === 13) { $('#btnSearch').click(); }
+            });
+
+            // View message content
+            $("#notices_grid").on("click", ".btn-view-msg", function () {
+                var msg = $(this).data('msg');
+                Swal.fire({
+                    title     : 'Message Content',
+                    html      : '<pre style="text-align:left; white-space:pre-wrap; '
+                              + 'font-size:13px;">' + msg + '</pre>',
+                    width     : 600,
+                    confirmButtonColor: '#0d6fa4',
+                    confirmButtonText : 'Close'
+                });
+            });
+
+        });
+    </script>
+}

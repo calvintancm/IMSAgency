@@ -1,7 +1,7 @@
 ﻿// Models/Auth/LoginViewModel.cs
 using System.ComponentModel.DataAnnotations;
 
-namespace ImsAgency.Web.ViewModels.Auth
+namespace ImsAgency.Web.ViewModels
 {
     public class LoginViewModel
     {

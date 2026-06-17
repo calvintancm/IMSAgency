@@ -1,0 +1,653 @@
+﻿@model ImsAgency.Web.Models.ViewModels.NonMotorPolicyFormViewModel
+@using Microsoft.AspNetCore.Html
+@{
+    ViewData["Title"] = Model.PolicyId == 0 ? "New Non-Motor Policy" : "Edit Non-Motor Policy";
+    var isNew = Model.PolicyId == 0;
+
+    var insurers      = (ViewBag.Insurers as IEnumerable<dynamic>)
+                        ?? Enumerable.Empty<dynamic>();
+    var policyClasses = (ViewBag.NonMotorPolicyClasses as IEnumerable<dynamic>)
+                        ?? Enumerable.Empty<dynamic>();
+    var agents        = (ViewBag.Agents as IEnumerable<dynamic>)
+                        ?? Enumerable.Empty<dynamic>();
+
+    Func<string, string, IHtmlContent> Sel = (val, match) =>
+        val == match
+            ? new HtmlString("selected=\"selected\"")
+            : HtmlString.Empty;
+
+    var clientIdJs   = Model.ClientId.ToString();
+    var clientTextJs = System.Text.Json.JsonSerializer.Serialize(
+                           Model.ClientDisplay ?? "");
+
+    string D(decimal v) =>
+        v.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+    string DN(decimal? v) => v.HasValue
+        ? v.Value.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+        : "";
+
+    // Is this a group policy? Controls whether sub-grid is shown
+    var isGroupPolicy    = Model.IsGroupPolicy;
+    var isGroupPolicyJs  = isGroupPolicy ? "true" : "false";
+    var policyIdForGrid  = Model.PolicyId.ToString();
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            @(isNew ? "New Non-Motor Policy" : "Edit Non-Motor Policy")
+        </h1>
+        <p class="page-subtitle">
+            @if (isNew)
+            {
+                @:Cover Note will be auto-generated on save
+            }
+            else
+            {
+                <span>Cover Note: <strong>@Model.CoverNoteNumber</strong></span>
+            }
+        </p>
+    </div>
+    <div style="display:flex; gap:8px;">
+        @if (!isNew)
+        {
+            <a href="@Url.Action("Details", new { id = Model.PolicyId })"
+               class="btn-ptc-outline">
+                <i class="bi bi-eye"></i> View Details
+            </a>
+        }
+        <a href="@Url.Action("NonMotorPolicies")" class="btn-ptc-outline">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+<input type="hidden" id="policyId" value="@Model.PolicyId" />
+
+<div style="display:grid; grid-template-columns:1.4fr 1fr; gap:16px;">
+
+    <!-- ============================================================
+         LEFT — POLICY DETAILS
+    ============================================================ -->
+    <div class="ptc-card">
+        <div class="ptc-card-header">
+            <h2 class="ptc-card-title">Policy Details</h2>
+        </div>
+        <div class="ptc-card-body">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+
+                <!-- CLIENT -->
+                <div style="grid-column:span 2;">
+                    <label class="form-label">
+                        Client <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" id="clientCombo" style="width:100%;" />
+                    <div class="mt-1">
+                        <a href="@Url.Action("AddClient","Client")"
+                           target="_blank" class="small text-decoration-none">
+                            <i class="bi bi-plus-circle"></i>
+                            New client? Add here (opens in new tab)
+                        </a>
+                    </div>
+                </div>
+
+                <!-- INSURER -->
+                <div>
+                    <label class="form-label">
+                        Insurer <span class="text-danger">*</span>
+                    </label>
+                    <select id="InsurerId" class="form-select">
+                        <option value="0">— Select Insurer —</option>
+                        @foreach (var ins in insurers)
+                        {
+                            var s = ((int)ins.InsurerId == Model.InsurerId)
+                                ? new HtmlString("selected=\"selected\"")
+                                : HtmlString.Empty;
+                            <option value="@ins.InsurerId" @s>@ins.InsurerName</option>
+                        }
+                    </select>
+                </div>
+
+                <!-- POLICY CLASS -->
+                <div>
+                    <label class="form-label">
+                        Policy Class <span class="text-danger">*</span>
+                    </label>
+                    <select id="PolicyClassCode" class="form-select">
+                        @foreach (var pc in policyClasses)
+                        {
+                            var s = ((string)pc.ClassCode == Model.PolicyClassCode)
+                                ? new HtmlString("selected=\"selected\"")
+                                : HtmlString.Empty;
+                            <option value="@pc.ClassCode" @s>@pc.ClassName</option>
+                        }
+                    </select>
+                </div>
+
+                <!-- POLICY NUMBER -->
+                <div>
+                    <label class="form-label">Policy Number (Insurer's)</label>
+                    <input type="text" id="PolicyNumber" class="form-control"
+                           value="@Model.PolicyNumber"
+                           placeholder="Filled once issued by insurer" />
+                </div>
+
+                <!-- POLICY STATUS -->
+                <div>
+                    <label class="form-label">Policy Status</label>
+                    <select id="PolicyStatus" class="form-select">
+                        <option value="Draft"     @Sel(Model.PolicyStatus,"Draft")>Draft</option>
+                        <option value="Quoted"    @Sel(Model.PolicyStatus,"Quoted")>Quoted</option>
+                        <option value="Active"    @Sel(Model.PolicyStatus,"Active")>Active</option>
+                        <option value="Expired"   @Sel(Model.PolicyStatus,"Expired")>Expired</option>
+                        <option value="Lapsed"    @Sel(Model.PolicyStatus,"Lapsed")>Lapsed</option>
+                        <option value="Cancelled" @Sel(Model.PolicyStatus,"Cancelled")>Cancelled</option>
+                    </select>
+                </div>
+
+                <!-- START DATE -->
+                <div>
+                    <label class="form-label">
+                        Start Date <span class="text-danger">*</span>
+                    </label>
+                    <input type="date" id="StartDate" class="form-control"
+                           value="@Model.StartDate.ToString("yyyy-MM-dd")" />
+                </div>
+
+                <!-- EXPIRY DATE -->
+                <div>
+                    <label class="form-label">
+                        Expiry Date <span class="text-danger">*</span>
+                    </label>
+                    <input type="date" id="ExpiryDate" class="form-control"
+                           value="@Model.ExpiryDate.ToString("yyyy-MM-dd")" />
+                    <small class="text-muted">
+                        Auto-set to Start + 1 year − 1 day (editable)
+                    </small>
+                </div>
+
+                <!-- SUM INSURED -->
+                <div>
+                    <label class="form-label">
+                        Sum Insured (RM) <span class="text-danger">*</span>
+                    </label>
+                    <input type="number" id="SumInsured" class="form-control"
+                           value="@D(Model.SumInsured)" min="0" step="0.01" />
+                </div>
+
+                <!-- HANDLING AGENT -->
+                <div>
+                    <label class="form-label">Handling Agent</label>
+                    <select id="AgentCode" class="form-select">
+                        <option value="">— Unassigned —</option>
+                        @foreach (var ag in agents)
+                        {
+                            var s = ((string)ag.AgentCode == Model.AgentCode)
+                                ? new HtmlString("selected=\"selected\"")
+                                : HtmlString.Empty;
+                            <option value="@ag.AgentCode" @s>
+                                @ag.AgentCode — @ag.FullName
+                            </option>
+                        }
+                    </select>
+                </div>
+
+                <!-- REMARKS -->
+                <div style="grid-column:span 2;">
+                    <label class="form-label">Remarks</label>
+                    <textarea id="Remarks" class="form-control" rows="2">@Model.Remarks</textarea>
+                </div>
+
+            </div>
+
+            <div class="mt-3">
+                <button type="button" id="btnSavePolicy" class="btn-ptc-primary">
+                    <i class="bi bi-save"></i>
+                    @(isNew ? "Create Policy" : "Save Changes")
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         RIGHT — PREMIUM CALCULATOR (Non-Motor, no NCD)
+    ============================================================ -->
+    <div class="ptc-card">
+        <div class="ptc-card-header">
+            <h2 class="ptc-card-title">
+                <i class="bi bi-calculator"></i> Premium Calculator
+            </h2>
+            <small class="text-muted">Non-Motor (no NCD applies)</small>
+        </div>
+        <div class="ptc-card-body">
+
+            <div class="mb-3">
+                <label class="form-label">
+                    Gross Premium (RM) <span class="text-danger">*</span>
+                </label>
+                <input type="number" id="GrossPremium"
+                       class="form-control calc-input"
+                       value="@D(Model.GrossPremium)" min="0" step="0.01" />
+                <small class="text-muted">
+                    Basic flat premium (no NCD on non-motor policies)
+                </small>
+            </div>
+
+            <div class="d-flex justify-content-between mb-2 pb-2"
+                 style="border-bottom:1px solid var(--ims-border);">
+                <span class="text-muted">Net Premium (= Gross)</span>
+                <strong id="dispNetPremium">RM 0.00</strong>
+            </div>
+
+            <p class="mb-2"><strong>Add-Ons (if applicable)</strong></p>
+
+            <div class="mb-2">
+                <label class="form-label small mb-1">Special Perils (RM)</label>
+                <input type="number" id="AddonSpecialPerils"
+                       class="form-control form-control-sm calc-input"
+                       value="@D(Model.AddonSpecialPerils)" min="0" step="0.01" />
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label small mb-1">Named Driver / Extension (RM)</label>
+                <input type="number" id="AddonNamedDriver"
+                       class="form-control form-control-sm calc-input"
+                       value="@D(Model.AddonNamedDriver)" min="0" step="0.01" />
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label small mb-1">Other Extension (RM)</label>
+                <input type="number" id="AddonTotalLoss"
+                       class="form-control form-control-sm calc-input"
+                       value="@D(Model.AddonTotalLoss)" min="0" step="0.01" />
+            </div>
+
+            <div class="d-flex justify-content-between mb-1 mt-3 pt-2"
+                 style="border-top:1px solid var(--ims-border);">
+                <span class="text-muted">Total Add-Ons</span>
+                <strong id="dispTotalAddon">RM 0.00</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-1">
+                <span class="text-muted">Service Tax (SST 8%)</span>
+                <strong id="dispServiceTax">RM 0.00</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">Stamp Duty (fixed)</span>
+                <strong>RM 10.00</strong>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center p-3 rounded"
+                 style="background:var(--ims-primary-light);
+                        border:1px solid var(--ims-primary);">
+                <span style="font-weight:700; color:var(--ims-primary);">
+                    NET PREMIUM PAYABLE
+                </span>
+                <span id="dispNetPayable"
+                      style="font-size:22px; font-weight:800; color:var(--ims-primary);">
+                    RM 0.00
+                </span>
+            </div>
+
+            <div class="mt-3">
+                <label class="form-label small mb-1">
+                    Agent Commission (RM) — optional
+                </label>
+                <input type="number" id="AgentCommission"
+                       class="form-control form-control-sm"
+                       value="@DN(Model.AgentCommission)" min="0" step="0.01" />
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- ============================================================
+     GROUP MEMBER SUB-GRID (Feature 5)
+     Only shown for FWHS / PA / MEDHLT policies — and only on Edit
+     (must save first to get a PolicyId before adding members)
+============================================================ -->
+@if (!isNew && isGroupPolicy)
+{
+    <div class="ptc-card mt-3">
+        <div class="ptc-card-header">
+            <h2 class="ptc-card-title">
+                <i class="bi bi-people-fill"></i> Group Members / Covered Workers
+            </h2>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <span id="memberCount" class="record-count-badge">0 members</span>
+                <button type="button" id="btnAddMember" class="btn-ptc-outline btn-sm">
+                    <i class="bi bi-plus-lg"></i> Add Member
+                </button>
+                <form method="post"
+                      action="@Url.Action("ExportGroupRoster","Policy")"
+                      style="display:inline;">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="policyId" value="@Model.PolicyId" />
+                    <button type="submit" class="btn-ptc-outline btn-sm">
+                        <i class="bi bi-file-earmark-excel"></i> Export Excel
+                    </button>
+                </form>
+            </div>
+        </div>
+        <div class="ptc-card-body" style="padding:0;">
+            <div id="groupmember_grid"></div>
+        </div>
+    </div>
+}
+else if (isNew && isGroupPolicy)
+{
+    <div class="alert alert-info mt-3">
+        <i class="bi bi-info-circle"></i>
+        Save the policy first — then return here to add covered workers / group members.
+    </div>
+}
+
+@section Scripts {
+<script>
+    // JS bridge variables (pre-built above to avoid Razor parse errors)
+    var IS_NEW_POLICY    = @Html.Raw(isNew ? "true" : "false");
+    var IS_GROUP_POLICY  = @Html.Raw(isGroupPolicyJs);
+    var EDIT_CLIENT_ID   = @Html.Raw(clientIdJs);
+    var EDIT_CLIENT_TEXT = @Html.Raw(clientTextJs);
+    var POLICY_ID        = @Html.Raw(policyIdForGrid);
+
+    $(document).ready(function () {
+
+        // ============================================================
+        // CLIENT COMBOBOX
+        // ============================================================
+        var clientCombo = $("#clientCombo").kendoComboBox({
+            dataTextField  : "Text",
+            dataValueField : "Id",
+            filter         : "contains",
+            minLength      : 1,
+            autoBind       : false,
+            placeholder    : "Type client name, code, or NRIC/BRN...",
+            dataSource: {
+                serverFiltering: true,
+                transport: {
+                    read: {
+                        url      : '@Url.Action("SearchClients","Policy")',
+                        dataType : "json"
+                    }
+                }
+            }
+        }).data("kendoComboBox");
+
+        if (!IS_NEW_POLICY && EDIT_CLIENT_ID) {
+            clientCombo.dataSource.data([{
+                Id  : parseInt(EDIT_CLIENT_ID),
+                Text: EDIT_CLIENT_TEXT
+            }]);
+            clientCombo.value(EDIT_CLIENT_ID);
+            clientCombo.text(EDIT_CLIENT_TEXT);
+        }
+
+        // ============================================================
+        // POLICY CLASS CHANGE — show/hide group member section
+        // ============================================================
+        var GROUP_CLASS_CODES = ['FWHS', 'PA', 'MEDHLT'];
+
+        $('#PolicyClassCode').on('change', function () {
+            var code = $(this).val();
+            IS_GROUP_POLICY = GROUP_CLASS_CODES.indexOf(code) >= 0;
+        });
+
+        // ============================================================
+        // AUTO-SET EXPIRY = START + 1 YEAR - 1 DAY
+        // ============================================================
+        var expiryUserEdited = false;
+        $('#ExpiryDate').on('change', function () { expiryUserEdited = true; });
+
+        $('#StartDate').on('change', function () {
+            if (expiryUserEdited) return;
+            var start = new Date($(this).val());
+            if (isNaN(start.getTime())) return;
+            var exp = new Date(start);
+            exp.setFullYear(exp.getFullYear() + 1);
+            exp.setDate(exp.getDate() - 1);
+            var yyyy = exp.getFullYear();
+            var mm   = String(exp.getMonth() + 1).padStart(2, '0');
+            var dd   = String(exp.getDate()).padStart(2, '0');
+            $('#ExpiryDate').val(yyyy + '-' + mm + '-' + dd);
+        });
+
+        // ============================================================
+        // NON-MOTOR PREMIUM CALCULATOR (no NCD)
+        // GrossPremium = NetPremium (no NCD deduction)
+        // TotalAddon   = SpecialPerils + NamedDriver + TotalLoss
+        // ServiceTax   = (NetPremium + TotalAddon) × 8%
+        // StampDuty    = RM 10.00
+        // NetPayable   = NetPremium + TotalAddon + ServiceTax + StampDuty
+        // ============================================================
+        function round2(n) {
+            return Math.round((n + Number.EPSILON) * 100) / 100;
+        }
+
+        function recalc() {
+            var gross = parseFloat($('#GrossPremium').val()) || 0;
+
+            var sp = parseFloat($('#AddonSpecialPerils').val()) || 0;
+            var nd = parseFloat($('#AddonNamedDriver').val())   || 0;
+            var tl = parseFloat($('#AddonTotalLoss').val())     || 0;
+
+            var totalAddon = round2(sp + nd + tl);
+            var serviceTax = round2((gross + totalAddon) * 0.08);
+            var stampDuty  = 10.00;
+            var netPayable = round2(gross + totalAddon + serviceTax + stampDuty);
+
+            $('#dispNetPremium').text('RM ' + gross.toFixed(2));
+            $('#dispTotalAddon').text('RM ' + totalAddon.toFixed(2));
+            $('#dispServiceTax').text('RM ' + serviceTax.toFixed(2));
+            $('#dispNetPayable').text('RM ' + netPayable.toFixed(2));
+        }
+
+        $(document).on('input change', '#GrossPremium, .calc-input', recalc);
+        recalc();
+
+        // ============================================================
+        // SAVE POLICY (AJAX)
+        // ============================================================
+        $('#btnSavePolicy').on('click', function () {
+            var clientId  = clientCombo.value();
+            var insurerId = $('#InsurerId').val();
+            var gross     = parseFloat($('#GrossPremium').val()) || 0;
+
+            if (!clientId || parseInt(clientId) === 0) {
+                KSwal.warning('Please select a client.'); return; }
+            if (!insurerId || insurerId === '0') {
+                KSwal.warning('Please select an insurer.'); return; }
+            if (gross <= 0) {
+                KSwal.warning('Please enter the Gross Premium.'); return; }
+
+            var payload = {
+                PolicyId        : $('#policyId').val(),
+                PolicyNumber    : $('#PolicyNumber').val(),
+                ClientId        : clientId,
+                InsurerId       : insurerId,
+                PolicyClassCode : $('#PolicyClassCode').val(),
+                PolicyStatus    : $('#PolicyStatus').val(),
+                StartDate       : $('#StartDate').val(),
+                ExpiryDate      : $('#ExpiryDate').val(),
+                SumInsured      : $('#SumInsured').val() || 0,
+                AgentCode       : $('#AgentCode').val(),
+                Remarks         : $('#Remarks').val(),
+                GrossPremium      : gross,
+                AddonSpecialPerils: $('#AddonSpecialPerils').val() || 0,
+                AddonNamedDriver  : $('#AddonNamedDriver').val()   || 0,
+                AddonTotalLoss    : $('#AddonTotalLoss').val()     || 0,
+                AgentCommission   : $('#AgentCommission').val()    || null,
+                __RequestVerificationToken:
+                    $('input[name="__RequestVerificationToken"]').val()
+            };
+
+            $.post('@Url.Action("SaveNonMotorPolicy","Policy")', payload)
+                .done(function (res) {
+                    if (res.success) {
+                        KSwal.success(res.message).then(function () {
+                            window.location.href = res.redirectUrl;
+                        });
+                    } else {
+                        KSwal.error(res.message);
+                    }
+                })
+                .fail(function () {
+                    KSwal.error('An unexpected error occurred while saving.');
+                });
+        });
+
+        // ============================================================
+        // GROUP MEMBER KENDO GRID (Feature 5)
+        // Only initialised when IS_GROUP_POLICY and not a new policy
+        // ============================================================
+        if (IS_GROUP_POLICY && !IS_NEW_POLICY) {
+            initGroupMemberGrid();
+        }
+
+        function initGroupMemberGrid() {
+            var memberGrid = $("#groupmember_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: {
+                            url  : '@Url.Action("GroupEmployeesRead","Policy")',
+                            type : 'POST',
+                            data : function () { return { policyId: POLICY_ID }; }
+                        },
+                        update  : { url: '@Url.Action("GroupEmployeesSave","Policy")', type: 'POST' },
+                        create  : { url: '@Url.Action("GroupEmployeesSave","Policy")', type: 'POST' },
+                        destroy : { url: '@Url.Action("GroupEmployeesDelete","Policy")', type: 'POST' },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                return $.extend({}, data, { __RequestVerificationToken: token });
+                            }
+                            if (data.models && data.models.length > 0) {
+                                var m = data.models[0];
+                                m.PolicyId = POLICY_ID;
+                                return $.extend({}, m, { __RequestVerificationToken: token });
+                            }
+                            return $.extend({}, data,
+                                { __RequestVerificationToken: token, PolicyId: POLICY_ID });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'EmployeeLinkId',
+                            fields: {
+                                EmployeeLinkId : { type: 'number',  editable: false },
+                                PolicyId       : { type: 'number',  editable: false,
+                                                   defaultValue: POLICY_ID },
+                                EmployeeName   : { type: 'string',
+                                                   validation: { required: true } },
+                                PassportOrNric : { type: 'string',
+                                                   validation: { required: true } },
+                                Gender         : { type: 'string', defaultValue: 'M' },
+                                NationalityCode: { type: 'string' },
+                                DateOfBirth    : { type: 'date' },
+                                Occupation     : { type: 'string' },
+                                AnnualWage     : { type: 'number' },
+                                IsActive       : { type: 'boolean', defaultValue: true }
+                            }
+                        }
+                    },
+                    serverPaging: false, serverSorting: false,
+                    error: function (e) {
+                        var msg = 'An error occurred.';
+                        try {
+                            var p = JSON.parse(e.xhr.responseText);
+                            if (p.Errors && p.Errors.error && p.Errors.error.errors)
+                                msg = p.Errors.error.errors[0];
+                        } catch (ex) { }
+                        KSwal.error(msg);
+                        this.cancelChanges();
+                    }
+                },
+                editable  : 'inline',
+                scrollable: false,
+                height    : 400,
+                toolbar   : [],
+                columns: [
+                    { field: 'EmployeeName',   title: 'Name',            width: 180 },
+                    { field: 'PassportOrNric', title: 'Passport / NRIC', width: 130 },
+                    {
+                        field: 'Gender',
+                        title: 'Gender',
+                        width: 90,
+                        editor: genderDropdown,
+                        template: function (item) {
+                            return item.Gender === 'M' ? 'Male' : 'Female';
+                        }
+                    },
+                    { field: 'NationalityCode', title: 'Nationality', width: 100 },
+                    {
+                        field: 'DateOfBirth',
+                        title: 'DOB',
+                        width: 110,
+                        template: function (item) {
+                            return item.DateOfBirth
+                                ? kendo.toString(kendo.parseDate(item.DateOfBirth),
+                                    'dd/MM/yyyy')
+                                : '—';
+                        }
+                    },
+                    { field: 'Occupation',  title: 'Occupation',    width: 140 },
+                    {
+                        field: 'AnnualWage',
+                        title: 'Annual Wage (RM)',
+                        width: 130,
+                        attributes: { style: 'text-align:right;' }
+                    },
+                    {
+                        field: 'IsActive',
+                        title: 'Active',
+                        width: 80,
+                        template: function (item) {
+                            return item.IsActive
+                                ? '<span class="badge-status badge-active">Yes</span>'
+                                : '<span class="badge-status badge-cancelled">No</span>';
+                        }
+                    },
+                    { command: ['edit', 'destroy'], title: '', width: 130 }
+                ]
+            }).data("kendoGrid");
+
+            $('#btnAddMember').on('click', function () { memberGrid.addRow(); });
+
+            memberGrid.bind('dataBound', function () {
+                $('#memberCount').text(this.dataSource.total() + ' members');
+            });
+
+            // Confirm before delete
+            $("#groupmember_grid").on("click", ".k-grid-delete", function (e) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                var row = $(this).closest("tr");
+                var item = memberGrid.dataItem(row);
+
+                KSwal.confirmDelete("Remove " + item.EmployeeName + " from this policy?")
+                    .then(function (result) {
+                        if (result.isConfirmed) { memberGrid.removeRow(row); }
+                    });
+            });
+        }
+
+        function genderDropdown(container, options) {
+            $('<input name="' + options.field + '"/>')
+                .appendTo(container)
+                .kendoDropDownList({
+                    dataSource: [
+                        { text: 'Male', value: 'M' },
+                        { text: 'Female', value: 'F' }
+                    ],
+                    dataTextField : 'text',
+                    dataValueField: 'value',
+                    value         : options.model.Gender
+                });
+        }
+
+    });
+</script>
+}

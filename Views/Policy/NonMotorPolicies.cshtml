@@ -1,0 +1,309 @@
+﻿@model ImsAgency.Web.Models.ViewModels.NonMotorPolicyListViewModel
+@{
+    ViewData["Title"] = "Non-Motor Policies";
+    var insurers = (ViewBag.Insurers as IEnumerable<dynamic>)
+                        ?? Enumerable.Empty<dynamic>();
+    var policyClasses = (ViewBag.NonMotorPolicyClasses as IEnumerable<dynamic>)
+                        ?? Enumerable.Empty<dynamic>();
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Non-Motor Policies</h1>
+        <p class="page-subtitle">
+            FWHS, Medical, Personal Accident, Home, Travel, Fire &amp; Allied Perils
+        </p>
+    </div>
+    <div>
+        <a href="@Url.Action("NewNonMotorPolicy")" class="btn-ptc-primary">
+            <i class="bi bi-plus-lg"></i> New Non-Motor Policy
+        </a>
+    </div>
+</div>
+
+<!-- STAT STRIP -->
+<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px;">
+    <div class="stat-card">
+        <div class="stat-label">
+            <i class="bi bi-folder2-open"></i> Total Non-Motor Policies
+        </div>
+        <div class="stat-value">@Model.TotalNonMotorPolicies</div>
+    </div>
+    <div class="stat-card stat-accent">
+        <div class="stat-label">
+            <i class="bi bi-check-circle"></i> Active
+        </div>
+        <div class="stat-value">@Model.ActiveNonMotorPolicies</div>
+    </div>
+    <div class="stat-card stat-accent">
+        <div class="stat-label">
+            <i class="bi bi-people"></i> Group Policies (FWHS / PA)
+        </div>
+        <div class="stat-value">@Model.GroupPolicies</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">
+            <i class="bi bi-cash-stack"></i> Total Sum Insured (Active)
+        </div>
+        <div class="stat-value">RM @Model.TotalSumInsured.ToString("N0")</div>
+    </div>
+</div>
+
+<!-- FILTER CARD -->
+<div class="ptc-card mb-3">
+    <div class="ptc-card-body">
+        <div style="display:grid;
+                    grid-template-columns:2fr 1.2fr 1.2fr 1fr auto auto;
+                    gap:12px; align-items:end;">
+            <div>
+                <label class="form-label">Search</label>
+                <input type="text" id="filterSearchText" class="form-control"
+                       placeholder="Cover Note, Policy No., or Client Name" />
+            </div>
+            <div>
+                <label class="form-label">Insurer</label>
+                <select id="filterInsurer" class="form-select">
+                    <option value="0">All Insurers</option>
+                    @foreach (var ins in insurers)
+                    {
+                        <option value="@ins.InsurerId">@ins.InsurerName</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Policy Class</label>
+                <select id="filterClass" class="form-select">
+                    <option value="All">All Classes</option>
+                    @foreach (var pc in policyClasses)
+                    {
+                        <option value="@pc.ClassCode">@pc.ClassName</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Status</label>
+                <select id="filterStatus" class="form-select">
+                    <option value="All">All</option>
+                    <option value="Draft">Draft</option>
+                    <option value="Quoted">Quoted</option>
+                    <option value="Active">Active</option>
+                    <option value="Expired">Expired</option>
+                    <option value="Lapsed">Lapsed</option>
+                    <option value="Cancelled">Cancelled</option>
+                </select>
+            </div>
+            <div>
+                <button type="button" id="btnSearch" class="btn-ptc-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+            <div>
+                <button type="button" id="btnClearFilter" class="btn-ptc-outline">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GRID CARD -->
+<div class="ptc-card">
+    <div class="ptc-card-header">
+        <h2 class="ptc-card-title">Non-Motor Policy List</h2>
+        <span id="recordCount" class="record-count-badge">0 records</span>
+    </div>
+    <div class="ptc-card-body" style="padding:0;">
+        <div id="nonmotor_grid"></div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            function getFilters() {
+                return {
+                    searchText    : $('#filterSearchText').val(),
+                    insurerId     : $('#filterInsurer').val(),
+                    policyClassCode: $('#filterClass').val(),
+                    status        : $('#filterStatus').val()
+                };
+            }
+
+            var grid = $("#nonmotor_grid").kendoGrid({
+                dataSource: {
+                    transport: {
+                        read: {
+                            url  : '@Url.Action("NonMotorPoliciesRead", "Policy")',
+                            type : 'POST'
+                        },
+                        parameterMap: function (data, operation) {
+                            var token = $('input[name="__RequestVerificationToken"]').val();
+                            if (operation === 'read') {
+                                var sf = null, sd = null;
+                                if (data.sort && data.sort.length > 0) {
+                                    sf = data.sort[0].field;
+                                    sd = data.sort[0].dir;
+                                }
+                                return $.extend({
+                                    page: data.page, pageSize: data.pageSize,
+                                    sortField: sf, sortDir: sd
+                                }, getFilters(), { __RequestVerificationToken: token });
+                            }
+                            return $.extend({}, data, { __RequestVerificationToken: token });
+                        }
+                    },
+                    schema: {
+                        data: 'Data', total: 'Total', errors: 'Errors',
+                        model: {
+                            id: 'PolicyId',
+                            fields: {
+                                PolicyId         : { type: 'number' },
+                                CoverNoteNumber  : { type: 'string' },
+                                PolicyNumber     : { type: 'string' },
+                                ClientName       : { type: 'string' },
+                                InsurerName      : { type: 'string' },
+                                PolicyClassName  : { type: 'string' },
+                                PolicyClassCode  : { type: 'string' },
+                                PolicyStatus     : { type: 'string' },
+                                StartDate        : { type: 'date' },
+                                ExpiryDate       : { type: 'date' },
+                                NetPremiumPayable: { type: 'number' },
+                                GroupMemberCount : { type: 'number' },
+                                DaysToExpiry     : { type: 'number' },
+                                IsGroupPolicy    : { type: 'boolean' }
+                            }
+                        }
+                    },
+                    pageSize: 15,
+                    serverPaging: true, serverSorting: true,
+                    sort: { field: 'PolicyId', dir: 'desc' },
+                    error: function (e) {
+                        var msg = 'An error occurred.';
+                        try {
+                            var p = JSON.parse(e.xhr.responseText);
+                            if (p.Errors && p.Errors.error && p.Errors.error.errors)
+                                msg = p.Errors.error.errors[0];
+                        } catch (ex) { }
+                        KSwal.error(msg);
+                    }
+                },
+                pageable: { pageSize: 15, pageSizes: [15, 30, 50], info: true },
+                sortable: true, scrollable: true, height: 560,
+                columns: [
+                    {
+                        field: 'CoverNoteNumber',
+                        title: 'Cover Note',
+                        width: 160,
+                        template: function (item) {
+                            var html = '<strong>' + kendo.htmlEncode(item.CoverNoteNumber) + '</strong>';
+                            if (item.PolicyNumber) {
+                                html += '<br/><small class="text-muted">'
+                                     + kendo.htmlEncode(item.PolicyNumber) + '</small>';
+                            }
+                            return html;
+                        }
+                    },
+                    { field: 'ClientName', title: 'Client', width: 200 },
+                    {
+                        field: 'PolicyClassName',
+                        title: 'Class',
+                        width: 160,
+                        template: function (item) {
+                            var html = kendo.htmlEncode(item.PolicyClassName);
+                            // Group member count badge (Feature 5)
+                            if (item.IsGroupPolicy && item.GroupMemberCount > 0) {
+                                html += ' <span class="badge-status badge-active" title="Group members">'
+                                     + '<i class="bi bi-people-fill"></i> '
+                                     + item.GroupMemberCount + '</span>';
+                            }
+                            return html;
+                        }
+                    },
+                    { field: 'InsurerName', title: 'Insurer', width: 170 },
+                    {
+                        field: 'ExpiryDate',
+                        title: 'Period',
+                        width: 175,
+                        template: function (item) {
+                            var start = kendo.toString(kendo.parseDate(item.StartDate), 'dd/MM/yyyy');
+                            var end   = kendo.toString(kendo.parseDate(item.ExpiryDate), 'dd/MM/yyyy');
+                            var html  = start + ' — ' + end;
+                            if (item.PolicyStatus === 'Active' && item.DaysToExpiry >= 0) {
+                                var color = item.DaysToExpiry < 30  ? '#dc2626'
+                                          : item.DaysToExpiry <= 90 ? '#d97706'
+                                          : '#16a34a';
+                                html += '<br/><span style="color:' + color
+                                     + ';font-size:11px;font-weight:600;">'
+                                     + item.DaysToExpiry + ' days left</span>';
+                            }
+                            return html;
+                        }
+                    },
+                    {
+                        field: 'NetPremiumPayable',
+                        title: 'Premium',
+                        width: 120,
+                        attributes: { style: 'text-align:right;' },
+                        template: function (item) {
+                            return 'RM ' + parseFloat(item.NetPremiumPayable).toFixed(2);
+                        }
+                    },
+                    {
+                        field: 'PolicyStatus',
+                        title: 'Status',
+                        width: 100,
+                        template: function (item) {
+                            var map = {
+                                Active: 'badge-active', Expired: 'badge-expired',
+                                Quoted: 'badge-pending', Draft: 'badge-pending',
+                                Cancelled: 'badge-cancelled', Lapsed: 'badge-lapsed'
+                            };
+                            return '<span class="badge-status '
+                                 + (map[item.PolicyStatus] || 'badge-status') + '">'
+                                 + item.PolicyStatus + '</span>';
+                        }
+                    },
+                    {
+                        title: 'Actions',
+                        width: 130,
+                        template: function (item) {
+                            var html = '<a href="@Url.Action("Details")/'
+                                + item.PolicyId
+                                + '" class="btn btn-sm btn-outline-primary" title="View">'
+                                + '<i class="bi bi-eye"></i></a> ';
+                            if (item.PolicyStatus === 'Draft'
+                                    || item.PolicyStatus === 'Quoted'
+                                    || item.PolicyStatus === 'Active') {
+                                html += '<a href="@Url.Action("EditNonMotorPolicy")/'
+                                    + item.PolicyId
+                                    + '" class="btn btn-sm btn-outline-secondary" title="Edit">'
+                                    + '<i class="bi bi-pencil"></i></a>';
+                            }
+                            return html;
+                        }
+                    }
+                ]
+            }).data("kendoGrid");
+
+            grid.bind('dataBound', function () {
+                $('#recordCount').text(this.dataSource.total() + ' records');
+            });
+
+            $('#btnSearch').on('click', function () { grid.dataSource.page(1); });
+            $('#btnClearFilter').on('click', function () {
+                $('#filterSearchText').val('');
+                $('#filterInsurer').val('0');
+                $('#filterClass').val('All');
+                $('#filterStatus').val('All');
+                grid.dataSource.page(1);
+            });
+            $('#filterSearchText').on('keypress', function (e) {
+                if (e.which === 13) { $('#btnSearch').click(); }
+            });
+
+        });
+    </script>
+}
