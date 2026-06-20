@@ -497,14 +497,32 @@ namespace ImsAgency.Web.Controllers
                         ExpiryDate = model.ExpiryDate,
                         NcdPercentage = model.NcdPercentage,
                         SumInsured = model.SumInsured,
-                        AgentCode = string.IsNullOrWhiteSpace(model.AgentCode) ? null : model.AgentCode,
+                        AgentCode = string.IsNullOrWhiteSpace(model.AgentCode)
+                            ? null : model.AgentCode,
                         Remarks = model.Remarks,
                         CreatedAt = DateTime.UtcNow,
                         CreatedBy = User.Identity?.Name
                     };
 
+                    // ---- RENEWAL CLONE: wire up PreviousPolicyId ----
+                    if (Request.Form.TryGetValue("PreviousPolicyId", out var prevIdStr)
+                        && int.TryParse(prevIdStr, out var prevPolicyId)
+                        && prevPolicyId > 0)
+                    {
+                        policy.PreviousPolicyId = prevPolicyId;
+                        policy.IsRenewal = true;
+
+                        // Mark the source policy as having a renewal
+                        // (so ExpiredMotor shows "Quote Prepared" badge)
+                        var sourcePolicy = await _db.Policies.FindAsync(prevPolicyId);
+                        if (sourcePolicy != null)
+                        {
+                            sourcePolicy.RenewalReminderCount += 1;
+                        }
+                    }
+
                     _db.Policies.Add(policy);
-                    await _db.SaveChangesAsync(); // generates PolicyId for the PremiumLedger FK
+                    await _db.SaveChangesAsync();
                 }
                 else
                 {
@@ -1015,13 +1033,13 @@ namespace ImsAgency.Web.Controllers
                         CoverNoteNumber = await GenerateCoverNoteNumberAsync(),
                         PolicyNumber = model.PolicyNumber,
                         ClientId = model.ClientId,
-                        VehicleId = null, // non-motor: no vehicle
+                        VehicleId = null,
                         InsurerId = model.InsurerId,
                         PolicyClassCode = model.PolicyClassCode,
                         PolicyStatus = model.PolicyStatus,
                         StartDate = model.StartDate,
                         ExpiryDate = model.ExpiryDate,
-                        NcdPercentage = 0, // non-motor: no NCD
+                        NcdPercentage = 0,
                         SumInsured = model.SumInsured,
                         AgentCode = string.IsNullOrWhiteSpace(model.AgentCode)
                             ? null : model.AgentCode,
@@ -1029,6 +1047,15 @@ namespace ImsAgency.Web.Controllers
                         CreatedAt = DateTime.UtcNow,
                         CreatedBy = User.Identity?.Name
                     };
+
+                    // ---- RENEWAL CLONE wiring ----
+                    if (Request.Form.TryGetValue("PreviousPolicyId", out var prevIdStr)
+                        && int.TryParse(prevIdStr, out var prevPolicyId)
+                        && prevPolicyId > 0)
+                    {
+                        policy.PreviousPolicyId = prevPolicyId;
+                        policy.IsRenewal = true;
+                    }
 
                     _db.Policies.Add(policy);
                     await _db.SaveChangesAsync();
@@ -1243,6 +1270,7 @@ namespace ImsAgency.Web.Controllers
         }
 
 
+       
         // ================================================================
         // HELPER: Step up NCD to the next tier (capped at 55%)
         // 0 → 25 → 30 → 38.33 → 45 → 55 → stays at 55
@@ -1260,10 +1288,11 @@ namespace ImsAgency.Web.Controllers
             return next > 0 ? next : sorted.Last();
         }
 
+
         // POST: /Policy/SaveMotorPolicy
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<JsonResult> SaveMotorPolicy(MotorPolicyFormViewModel model)
+        public async Task<JsonResult> SaveMotorPolicy2(MotorPolicyFormViewModel model)
         {
             if (!ModelState.IsValid)
             {
@@ -1444,11 +1473,11 @@ namespace ImsAgency.Web.Controllers
         }
 
         // ================================================================
-        // POST: /Policy/SaveMotorPolicy — update to handle PreviousPolicyId
+        // POST: /Policy/SaveMotorPolicy2 — update to handle PreviousPolicyId
         // ================================================================
-        // ⚠️ NOTE: The SaveMotorPolicy action already exists. We only need
+        // ⚠️ NOTE: The SaveMotorPolicy2 action already exists. We only need
         // to add PreviousPolicyId handling inside the "CREATE" branch.
-        // Find this block in your existing SaveMotorPolicy:
+        // Find this block in your existing SaveMotorPolicy2:
         //
         //     var policy = new Policy { ... };
         //

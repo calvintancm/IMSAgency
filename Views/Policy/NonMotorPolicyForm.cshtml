@@ -1,35 +1,67 @@
-﻿@model ImsAgency.Web.Models.ViewModels.NonMotorPolicyFormViewModel
+@model ImsAgency.Web.Models.ViewModels.NonMotorPolicyFormViewModel
 @using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = Model.PolicyId == 0 ? "New Non-Motor Policy" : "Edit Non-Motor Policy";
     var isNew = Model.PolicyId == 0;
 
-    var insurers      = (ViewBag.Insurers as IEnumerable<dynamic>)
-                        ?? Enumerable.Empty<dynamic>();
-    var policyClasses = (ViewBag.NonMotorPolicyClasses as IEnumerable<dynamic>)
-                        ?? Enumerable.Empty<dynamic>();
-    var agents        = (ViewBag.Agents as IEnumerable<dynamic>)
-                        ?? Enumerable.Empty<dynamic>();
+    var insurers      = (ViewBag.Insurers as IEnumerable<dynamic>)          ?? Enumerable.Empty<dynamic>();
+    var policyClasses = (ViewBag.NonMotorPolicyClasses as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
+    var agents        = (ViewBag.Agents as IEnumerable<dynamic>)            ?? Enumerable.Empty<dynamic>();
 
-    Func<string, string, IHtmlContent> Sel = (val, match) =>
-        val == match
-            ? new HtmlString("selected=\"selected\"")
-            : HtmlString.Empty;
-
-    var clientIdJs   = Model.ClientId.ToString();
-    var clientTextJs = System.Text.Json.JsonSerializer.Serialize(
-                           Model.ClientDisplay ?? "");
-
-    string D(decimal v) =>
-        v.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-    string DN(decimal? v) => v.HasValue
+    // Decimal helpers as Func<> delegates
+    Func<decimal, string>  D  = v => v.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+    Func<decimal?, string> DN = v => v.HasValue
         ? v.Value.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
         : "";
 
+    // sel() — returns "selected=\"selected\"" or "" — safe inside @{ } blocks only
+    Func<bool, string> sel = b => b ? "selected=\"selected\"" : "";
+
+    // Pre-build ALL <option> blocks as raw HTML strings to avoid Tag Helper + RZ1031 entirely
+    var sbInsurers = new System.Text.StringBuilder();
+    sbInsurers.Append("<option value=\"0\">— Select Insurer —</option>");
+    foreach (var ins in insurers)
+    {
+        sbInsurers.AppendFormat("<option value=\"{0}\" {1}>{2}</option>",
+            ins.InsurerId,
+            ((int)ins.InsurerId == Model.InsurerId ? "selected=\"selected\"" : ""),
+            System.Net.WebUtility.HtmlEncode((string)ins.InsurerName));
+    }
+
+    var sbPolicyClasses = new System.Text.StringBuilder();
+    foreach (var pc in policyClasses)
+    {
+        sbPolicyClasses.AppendFormat("<option value=\"{0}\" {1}>{2}</option>",
+            pc.ClassCode,
+            sel((string)pc.ClassCode == Model.PolicyClassCode),
+            System.Net.WebUtility.HtmlEncode((string)pc.ClassName));
+    }
+
+    var sbPolicyStatus = new System.Text.StringBuilder();
+    foreach (var s in new[] { "Draft", "Quoted", "Active", "Expired", "Lapsed", "Cancelled" })
+    {
+        sbPolicyStatus.AppendFormat("<option value=\"{0}\" {1}>{0}</option>",
+            s, sel(Model.PolicyStatus == s));
+    }
+
+    var sbAgents = new System.Text.StringBuilder();
+    sbAgents.Append("<option value=\"\">— Unassigned —</option>");
+    foreach (var ag in agents)
+    {
+        sbAgents.AppendFormat("<option value=\"{0}\" {1}>{0} — {2}</option>",
+            ag.AgentCode,
+            sel((string)ag.AgentCode == Model.AgentCode),
+            System.Net.WebUtility.HtmlEncode((string)ag.FullName));
+    }
+
+    // Pre-built JS bridge variables
+    var clientIdJs      = Model.ClientId.ToString();
+    var clientTextJs    = System.Text.Json.JsonSerializer.Serialize(Model.ClientDisplay ?? "");
+
     // Is this a group policy? Controls whether sub-grid is shown
-    var isGroupPolicy    = Model.IsGroupPolicy;
-    var isGroupPolicyJs  = isGroupPolicy ? "true" : "false";
-    var policyIdForGrid  = Model.PolicyId.ToString();
+    var isGroupPolicy   = Model.IsGroupPolicy;
+    var isGroupPolicyJs = isGroupPolicy ? "true" : "false";
+    var policyIdForGrid = Model.PolicyId.ToString();
 }
 
 <div class="page-header">
@@ -84,7 +116,7 @@
                     </label>
                     <input type="text" id="clientCombo" style="width:100%;" />
                     <div class="mt-1">
-                        <a href="@Url.Action("AddClient","Client")"
+                        <a href="@Url.Action("AddClient", "Client")"
                            target="_blank" class="small text-decoration-none">
                             <i class="bi bi-plus-circle"></i>
                             New client? Add here (opens in new tab)
@@ -98,14 +130,7 @@
                         Insurer <span class="text-danger">*</span>
                     </label>
                     <select id="InsurerId" class="form-select">
-                        <option value="0">— Select Insurer —</option>
-                        @foreach (var ins in insurers)
-                        {
-                            var s = ((int)ins.InsurerId == Model.InsurerId)
-                                ? new HtmlString("selected=\"selected\"")
-                                : HtmlString.Empty;
-                            <option value="@ins.InsurerId" @s>@ins.InsurerName</option>
-                        }
+                        @Html.Raw(sbInsurers.ToString())
                     </select>
                 </div>
 
@@ -115,13 +140,7 @@
                         Policy Class <span class="text-danger">*</span>
                     </label>
                     <select id="PolicyClassCode" class="form-select">
-                        @foreach (var pc in policyClasses)
-                        {
-                            var s = ((string)pc.ClassCode == Model.PolicyClassCode)
-                                ? new HtmlString("selected=\"selected\"")
-                                : HtmlString.Empty;
-                            <option value="@pc.ClassCode" @s>@pc.ClassName</option>
-                        }
+                        @Html.Raw(sbPolicyClasses.ToString())
                     </select>
                 </div>
 
@@ -137,12 +156,7 @@
                 <div>
                     <label class="form-label">Policy Status</label>
                     <select id="PolicyStatus" class="form-select">
-                        <option value="Draft"     @Sel(Model.PolicyStatus,"Draft")>Draft</option>
-                        <option value="Quoted"    @Sel(Model.PolicyStatus,"Quoted")>Quoted</option>
-                        <option value="Active"    @Sel(Model.PolicyStatus,"Active")>Active</option>
-                        <option value="Expired"   @Sel(Model.PolicyStatus,"Expired")>Expired</option>
-                        <option value="Lapsed"    @Sel(Model.PolicyStatus,"Lapsed")>Lapsed</option>
-                        <option value="Cancelled" @Sel(Model.PolicyStatus,"Cancelled")>Cancelled</option>
+                        @Html.Raw(sbPolicyStatus.ToString())
                     </select>
                 </div>
 
@@ -180,16 +194,7 @@
                 <div>
                     <label class="form-label">Handling Agent</label>
                     <select id="AgentCode" class="form-select">
-                        <option value="">— Unassigned —</option>
-                        @foreach (var ag in agents)
-                        {
-                            var s = ((string)ag.AgentCode == Model.AgentCode)
-                                ? new HtmlString("selected=\"selected\"")
-                                : HtmlString.Empty;
-                            <option value="@ag.AgentCode" @s>
-                                @ag.AgentCode — @ag.FullName
-                            </option>
-                        }
+                        @Html.Raw(sbAgents.ToString())
                     </select>
                 </div>
 
@@ -321,7 +326,7 @@
                     <i class="bi bi-plus-lg"></i> Add Member
                 </button>
                 <form method="post"
-                      action="@Url.Action("ExportGroupRoster","Policy")"
+                      action="@Url.Action("ExportGroupRoster", "Policy")"
                       style="display:inline;">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="policyId" value="@Model.PolicyId" />
@@ -369,7 +374,7 @@ else if (isNew && isGroupPolicy)
                 serverFiltering: true,
                 transport: {
                     read: {
-                        url      : '@Url.Action("SearchClients","Policy")',
+                        url      : '@Url.Action("SearchClients", "Policy")',
                         dataType : "json"
                     }
                 }
@@ -463,17 +468,17 @@ else if (isNew && isGroupPolicy)
                 KSwal.warning('Please enter the Gross Premium.'); return; }
 
             var payload = {
-                PolicyId        : $('#policyId').val(),
-                PolicyNumber    : $('#PolicyNumber').val(),
-                ClientId        : clientId,
-                InsurerId       : insurerId,
-                PolicyClassCode : $('#PolicyClassCode').val(),
-                PolicyStatus    : $('#PolicyStatus').val(),
-                StartDate       : $('#StartDate').val(),
-                ExpiryDate      : $('#ExpiryDate').val(),
-                SumInsured      : $('#SumInsured').val() || 0,
-                AgentCode       : $('#AgentCode').val(),
-                Remarks         : $('#Remarks').val(),
+                PolicyId          : $('#policyId').val(),
+                PolicyNumber      : $('#PolicyNumber').val(),
+                ClientId          : clientId,
+                InsurerId         : insurerId,
+                PolicyClassCode   : $('#PolicyClassCode').val(),
+                PolicyStatus      : $('#PolicyStatus').val(),
+                StartDate         : $('#StartDate').val(),
+                ExpiryDate        : $('#ExpiryDate').val(),
+                SumInsured        : $('#SumInsured').val() || 0,
+                AgentCode         : $('#AgentCode').val(),
+                Remarks           : $('#Remarks').val(),
                 GrossPremium      : gross,
                 AddonSpecialPerils: $('#AddonSpecialPerils').val() || 0,
                 AddonNamedDriver  : $('#AddonNamedDriver').val()   || 0,
@@ -483,7 +488,7 @@ else if (isNew && isGroupPolicy)
                     $('input[name="__RequestVerificationToken"]').val()
             };
 
-            $.post('@Url.Action("SaveNonMotorPolicy","Policy")', payload)
+            $.post('@Url.Action("SaveNonMotorPolicy", "Policy")', payload)
                 .done(function (res) {
                     if (res.success) {
                         KSwal.success(res.message).then(function () {
@@ -511,13 +516,13 @@ else if (isNew && isGroupPolicy)
                 dataSource: {
                     transport: {
                         read: {
-                            url  : '@Url.Action("GroupEmployeesRead","Policy")',
+                            url  : '@Url.Action("GroupEmployeesRead", "Policy")',
                             type : 'POST',
                             data : function () { return { policyId: POLICY_ID }; }
                         },
-                        update  : { url: '@Url.Action("GroupEmployeesSave","Policy")', type: 'POST' },
-                        create  : { url: '@Url.Action("GroupEmployeesSave","Policy")', type: 'POST' },
-                        destroy : { url: '@Url.Action("GroupEmployeesDelete","Policy")', type: 'POST' },
+                        update  : { url: '@Url.Action("GroupEmployeesSave", "Policy")',   type: 'POST' },
+                        create  : { url: '@Url.Action("GroupEmployeesSave", "Policy")',   type: 'POST' },
+                        destroy : { url: '@Url.Action("GroupEmployeesDelete", "Policy")', type: 'POST' },
                         parameterMap: function (data, operation) {
                             var token = $('input[name="__RequestVerificationToken"]').val();
                             if (operation === 'read') {
@@ -573,37 +578,36 @@ else if (isNew && isGroupPolicy)
                     { field: 'EmployeeName',   title: 'Name',            width: 180 },
                     { field: 'PassportOrNric', title: 'Passport / NRIC', width: 130 },
                     {
-                        field: 'Gender',
-                        title: 'Gender',
-                        width: 90,
-                        editor: genderDropdown,
+                        field   : 'Gender',
+                        title   : 'Gender',
+                        width   : 90,
+                        editor  : genderDropdown,
                         template: function (item) {
                             return item.Gender === 'M' ? 'Male' : 'Female';
                         }
                     },
                     { field: 'NationalityCode', title: 'Nationality', width: 100 },
                     {
-                        field: 'DateOfBirth',
-                        title: 'DOB',
-                        width: 110,
+                        field   : 'DateOfBirth',
+                        title   : 'DOB',
+                        width   : 110,
                         template: function (item) {
                             return item.DateOfBirth
-                                ? kendo.toString(kendo.parseDate(item.DateOfBirth),
-                                    'dd/MM/yyyy')
+                                ? kendo.toString(kendo.parseDate(item.DateOfBirth), 'dd/MM/yyyy')
                                 : '—';
                         }
                     },
-                    { field: 'Occupation',  title: 'Occupation',    width: 140 },
+                    { field: 'Occupation',  title: 'Occupation',      width: 140 },
                     {
-                        field: 'AnnualWage',
-                        title: 'Annual Wage (RM)',
-                        width: 130,
+                        field     : 'AnnualWage',
+                        title     : 'Annual Wage (RM)',
+                        width     : 130,
                         attributes: { style: 'text-align:right;' }
                     },
                     {
-                        field: 'IsActive',
-                        title: 'Active',
-                        width: 80,
+                        field   : 'IsActive',
+                        title   : 'Active',
+                        width   : 80,
                         template: function (item) {
                             return item.IsActive
                                 ? '<span class="badge-status badge-active">Yes</span>'
@@ -624,7 +628,7 @@ else if (isNew && isGroupPolicy)
             $("#groupmember_grid").on("click", ".k-grid-delete", function (e) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
-                var row = $(this).closest("tr");
+                var row  = $(this).closest("tr");
                 var item = memberGrid.dataItem(row);
 
                 KSwal.confirmDelete("Remove " + item.EmployeeName + " from this policy?")
@@ -638,8 +642,8 @@ else if (isNew && isGroupPolicy)
             $('<input name="' + options.field + '"/>')
                 .appendTo(container)
                 .kendoDropDownList({
-                    dataSource: [
-                        { text: 'Male', value: 'M' },
+                    dataSource    : [
+                        { text: 'Male',   value: 'M' },
                         { text: 'Female', value: 'F' }
                     ],
                     dataTextField : 'text',

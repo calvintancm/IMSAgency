@@ -1,87 +1,72 @@
-﻿@model ImsAgency.Web.Models.ViewModels.MotorPolicyFormViewModel
+@model ImsAgency.Web.Models.ViewModels.MotorPolicyFormViewModel
 @using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = Model.PolicyId == 0 ? "New Motor Policy" : "Edit Motor Policy";
     var isNew = Model.PolicyId == 0;
 
-    var insurers      = (ViewBag.Insurers          as IEnumerable<dynamic>
-    ) ?? Enumerable.Empty<dynamic>
-        ();
-        var policyClasses = (ViewBag.MotorPolicyClasses as IEnumerable<dynamic>
-            ) ?? Enumerable.Empty<dynamic>
-                ();
-                var ncdRates      = (ViewBag.NcdRates           as IEnumerable<dynamic>
-                    ) ?? Enumerable.Empty<dynamic>
-                        ();
-                        var agents        = (ViewBag.Agents             as IEnumerable<dynamic>
-                            ) ?? Enumerable.Empty<dynamic>
-                                ();
+    var insurers      = (ViewBag.Insurers          as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
+    var policyClasses = (ViewBag.MotorPolicyClasses as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
+    var ncdRates      = (ViewBag.NcdRates           as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
+    var agents        = (ViewBag.Agents             as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
 
-                                // Decimal helpers as Func<> delegates
-                                Func<decimal, string>
-                                    D  = v => v.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-                                    Func<decimal?, string>
-                                        DN = v => v.HasValue
-                                        ? v.Value.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
-                                        : "";
+    // Decimal helpers as Func<> delegates
+    Func<decimal, string>  D  = v => v.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+    Func<decimal?, string> DN = v => v.HasValue
+        ? v.Value.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+        : "";
 
-                                        // sel() — returns "selected" or "" — used ONLY inside @{ } blocks, never inline in attributes
-                                        Func<bool, string>
-    sel = b => b ? "selected" : "";
+    // sel() — returns "selected=\"selected\"" or "" — used only inside @{ } blocks
+    Func<bool, string> sel = b => b ? "selected=\"selected\"" : "";
 
-    // Pre-build ALL <option>
-        blocks as raw HTML strings to avoid Tag Helper + RZ1031 entirely
-        var sbInsurers = new System.Text.StringBuilder();
-        var sbInsurers = new System.Text.StringBuilder();
-        sbInsurers.Append("
-    <option value=\"0\">— Select Insurer —</option>");
+    // Pre-build ALL <option> blocks as raw HTML strings to avoid Tag Helper + RZ1031 entirely
+    var sbInsurers = new System.Text.StringBuilder();
+    sbInsurers.Append("<option value=\"0\">— Select Insurer —</option>");
     foreach (var ins in insurers)
     {
-    sbInsurers.AppendFormat("<option value=\"{0}\" {1}>{2}</option>",
-    ins.InsurerId,
-    (ins.InsurerId == Model.InsurerId ? "selected=\"selected\"" : ""),
-    System.Net.WebUtility.HtmlEncode((string)ins.InsurerName));
+        sbInsurers.AppendFormat("<option value=\"{0}\" {1}>{2}</option>",
+            ins.InsurerId,
+            (ins.InsurerId == Model.InsurerId ? "selected=\"selected\"" : ""),
+            System.Net.WebUtility.HtmlEncode((string)ins.InsurerName));
     }
-
 
     var sbPolicyClasses = new System.Text.StringBuilder();
     foreach (var pc in policyClasses)
     {
-    sbPolicyClasses.AppendFormat("<option value=\"{0}\" {1}>{2}</option>",
-    pc.ClassCode,
-    sel((string)pc.ClassCode == Model.PolicyClassCode),
-    System.Net.WebUtility.HtmlEncode((string)pc.ClassName));
+        sbPolicyClasses.AppendFormat("<option value=\"{0}\" {1}>{2}</option>",
+            pc.ClassCode,
+            sel((string)pc.ClassCode == Model.PolicyClassCode),
+            System.Net.WebUtility.HtmlEncode((string)pc.ClassName));
     }
 
     var sbPolicyStatus = new System.Text.StringBuilder();
     foreach (var s in new[] { "Draft", "Quoted", "Active", "Expired", "Lapsed", "Cancelled" })
     {
-    sbPolicyStatus.AppendFormat("<option value=\"{0}\" {1}>{0}</option>",
-    s, sel(Model.PolicyStatus == s));
+        sbPolicyStatus.AppendFormat("<option value=\"{0}\" {1}>{0}</option>",
+            s, sel(Model.PolicyStatus == s));
     }
 
     var sbNcd = new System.Text.StringBuilder();
     sbNcd.AppendFormat("<option value=\"0\" {0}>0% (No NCD)</option>",
-    sel(Model.NcdPercentage == 0));
+        sel(Model.NcdPercentage == 0));
     foreach (var ncd in ncdRates)
     {
-    decimal pct    = (decimal)ncd.NcdPercentage;
-    int     yrs    = (int)ncd.ClaimFreeYears;
-    var     pctStr = pct.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-    var     yrLbl  = yrs == 1 ? "yr" : "yrs";
-    sbNcd.AppendFormat("<option value=\"{0}\" {1}>{2}% ({3} claim-free {4})</option>",
-    pctStr, sel(Model.NcdPercentage == pct),
-    pct.ToString("0.##"), yrs, yrLbl);
+        decimal pct    = (decimal)ncd.NcdPercentage;
+        int     yrs    = (int)ncd.ClaimFreeYears;
+        var     pctStr = pct.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+        var     yrLbl  = yrs == 1 ? "yr" : "yrs";
+        sbNcd.AppendFormat("<option value=\"{0}\" {1}>{2}% ({3} claim-free {4})</option>",
+            pctStr, sel(Model.NcdPercentage == pct),
+            pct.ToString("0.##"), yrs, yrLbl);
     }
 
     var sbAgents = new System.Text.StringBuilder();
     sbAgents.Append("<option value=\"\">— Unassigned —</option>");
     foreach (var ag in agents)
     {
-    sbAgents.AppendFormat("<option value=\"{0}\" {1}>{0} — {2}</option>",
-    ag.AgentCode,
-    sel((string)ag.AgentCode == Model.AgentCode),
-    System.Net.WebUtility.HtmlEncode((string)ag.FullName));
+        sbAgents.AppendFormat("<option value=\"{0}\" {1}>{0} — {2}</option>",
+            ag.AgentCode,
+            sel((string)ag.AgentCode == Model.AgentCode),
+            System.Net.WebUtility.HtmlEncode((string)ag.FullName));
     }
 
     // Pre-built JS bridge variables
@@ -96,432 +81,434 @@
     var evBannerDisplay   = Model.IsElectricVehicle ? "flex" : "none";
     var evChargerOpacity  = Model.IsElectricVehicle ? "1" : "0.5";
     var evChargerDisabled = Model.IsElectricVehicle ? "" : "disabled=\"disabled\"";
-    }
+}
 
-    <div class="page-header">
-        <div>
-            <h1 class="page-title">@(isNew ? "New Motor Policy" : "Edit Motor Policy")</h1>
-            <p class="page-subtitle">
-                @if (isNew)
-                {
-                @:Cover Note Number will be auto-generated on save (e.g. CN-2026-10015)
-                }
-                else
-                {
-                <span>Cover Note: <strong>@Model.CoverNoteNumber</strong></span>
-                }
-            </p>
-        </div>
-        <div style="display:flex; gap:8px;">
-            @if (!isNew)
+<div class="page-header">
+    <div>
+        <h1 class="page-title">@(isNew ? "New Motor Policy" : "Edit Motor Policy")</h1>
+        <p class="page-subtitle">
+            @if (isNew)
             {
-            <a href="@Url.Action(" Details", new { id=Model.PolicyId })" class="btn-ptc-outline">
+                @:Cover Note Number will be auto-generated on save (e.g. CN-2026-10015)
+            }
+            else
+            {
+                <span>Cover Note: <strong>@Model.CoverNoteNumber</strong></span>
+            }
+        </p>
+    </div>
+    <div style="display:flex; gap:8px;">
+        @if (!isNew)
+        {
+            <a href="@Url.Action("Details", new { id = Model.PolicyId })" class="btn-ptc-outline">
                 <i class="bi bi-eye"></i> View Details
             </a>
-            }
-            <a href="@Url.Action(" MotorPolicies")" class="btn-ptc-outline">
-                <i class="bi bi-arrow-left"></i> Back to List
-            </a>
+        }
+        <a href="@Url.Action("MotorPolicies")" class="btn-ptc-outline">
+            <i class="bi bi-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+<input type="hidden" id="policyId" value="@Model.PolicyId" />
+
+<div id="evBanner"
+     class="alert alert-success d-flex align-items-center gap-2 mb-3"
+     style="display:@evBannerDisplay; border-left:4px solid var(--ims-accent);">
+    <i class="bi bi-lightning-charge-fill" style="font-size:20px;"></i>
+    <div>
+        <strong>&#9889; Electric Vehicle Policy.</strong>
+        The <strong>EV Charger Extension</strong> add-on below is now available —
+        consider including coverage for the customer's home charging equipment.
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1.4fr 1fr; gap:16px;">
+
+    <!-- LEFT COLUMN — POLICY DETAILS -->
+    <div class="ptc-card">
+        <div class="ptc-card-header">
+            <h2 class="ptc-card-title">Policy Details</h2>
+        </div>
+        <div class="ptc-card-body">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+
+                <div style="grid-column:span 2;">
+                    <label class="form-label">Client <span class="text-danger">*</span></label>
+                    <input type="text" id="clientCombo" style="width:100%;" />
+                    <div class="mt-1">
+                        <a href="@Url.Action("AddClient", "Client")" target="_blank" class="small text-decoration-none">
+                            <i class="bi bi-plus-circle"></i> New client? Add here (opens in new tab)
+                        </a>
+                    </div>
+                </div>
+
+                <div style="grid-column:span 2;">
+                    <label class="form-label">Vehicle <span class="text-danger">*</span></label>
+                    <input type="text" id="vehicleCombo" style="width:100%;" />
+                    <div class="mt-1">
+                        <a href="@Url.Action("AddVehicle", "Vehicle")" target="_blank" class="small text-decoration-none">
+                            <i class="bi bi-plus-circle"></i> New vehicle? Add here (opens in new tab)
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label">Insurer <span class="text-danger">*</span></label>
+                    <select id="InsurerId" class="form-select">
+                        @Html.Raw(sbInsurers.ToString())
+                    </select>
+                </div>
+
+                <div>
+                    <label class="form-label">Policy Class <span class="text-danger">*</span></label>
+                    <select id="PolicyClassCode" class="form-select">
+                        @Html.Raw(sbPolicyClasses.ToString())
+                    </select>
+                </div>
+
+                <div>
+                    <label class="form-label">Policy Number (Insurer's)</label>
+                    <input type="text" id="PolicyNumber" class="form-control"
+                           value="@Model.PolicyNumber"
+                           placeholder="Filled in once issued by insurer" />
+                </div>
+
+                <div>
+                    <label class="form-label">Policy Status</label>
+                    <select id="PolicyStatus" class="form-select">
+                        @Html.Raw(sbPolicyStatus.ToString())
+                    </select>
+                </div>
+
+                <div>
+                    <label class="form-label">Start Date <span class="text-danger">*</span></label>
+                    <input type="date" id="StartDate" class="form-control"
+                           value="@Model.StartDate.ToString("yyyy-MM-dd")" />
+                </div>
+
+                <div>
+                    <label class="form-label">Expiry Date <span class="text-danger">*</span></label>
+                    <input type="date" id="ExpiryDate" class="form-control"
+                           value="@Model.ExpiryDate.ToString("yyyy-MM-dd")" />
+                    <small class="text-muted">Auto-set to Start + 1 year - 1 day (editable)</small>
+                </div>
+
+                <div>
+                    <label class="form-label">NCD % <span class="text-danger">*</span></label>
+                    <select id="NcdPercentage" class="form-select">
+                        @Html.Raw(sbNcd.ToString())
+                    </select>
+                </div>
+
+                <div>
+                    <label class="form-label">Sum Insured (RM) <span class="text-danger">*</span></label>
+                    <input type="number" id="SumInsured" class="form-control"
+                           value="@D(Model.SumInsured)" min="0" step="0.01" />
+                    <small class="text-muted">Auto-filled from vehicle market value (editable)</small>
+                </div>
+
+                <div>
+                    <label class="form-label">Handling Agent</label>
+                    <select id="AgentCode" class="form-select">
+                        @Html.Raw(sbAgents.ToString())
+                    </select>
+                </div>
+
+                <div style="grid-column:span 2;">
+                    <label class="form-label">Remarks</label>
+                    <textarea id="Remarks" class="form-control" rows="2">@Model.Remarks</textarea>
+                </div>
+
+            </div>
         </div>
     </div>
 
-    @Html.AntiForgeryToken()
-    <input type="hidden" id="policyId" value="@Model.PolicyId" />
-
-    <div id="evBanner"
-         class="alert alert-success d-flex align-items-center gap-2 mb-3"
-         style="display:@evBannerDisplay; border-left:4px solid var(--ims-accent);">
-        <i class="bi bi-lightning-charge-fill" style="font-size:20px;"></i>
-        <div>
-            <strong>&#9889; Electric Vehicle Policy.</strong>
-            The <strong>EV Charger Extension</strong> add-on below is now available —
-            consider including coverage for the customer's home charging equipment.
+    <!-- RIGHT COLUMN — PREMIUM CALCULATOR -->
+    <div class="ptc-card">
+        <div class="ptc-card-header">
+            <h2 class="ptc-card-title"><i class="bi bi-calculator"></i> Premium Calculator</h2>
         </div>
-    </div>
+        <div class="ptc-card-body">
 
-    <div style="display:grid; grid-template-columns:1.4fr 1fr; gap:16px;">
-
-        <!-- LEFT COLUMN — POLICY DETAILS -->
-        <div class="ptc-card">
-            <div class="ptc-card-header">
-                <h2 class="ptc-card-title">Policy Details</h2>
+            <div class="mb-3">
+                <label class="form-label">Gross Premium (RM) <span class="text-danger">*</span></label>
+                <input type="number" id="GrossPremium" class="form-control calc-input"
+                       value="@D(Model.GrossPremium)" min="0" step="0.01" />
+                <small class="text-muted">Basic tariff premium before NCD and add-ons</small>
             </div>
-            <div class="ptc-card-body">
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
 
-                    <div style="grid-column:span 2;">
-                        <label class="form-label">Client <span class="text-danger">*</span></label>
-                        <input type="text" id="clientCombo" style="width:100%;" />
-                        <div class="mt-1">
-                            <a href="@Url.Action(" AddClient","Client")" target="_blank" class="small text-decoration-none">
-                                <i class="bi bi-plus-circle"></i> New client? Add here (opens in new tab)
-                            </a>
-                        </div>
-                    </div>
-
-                    <div style="grid-column:span 2;">
-                        <label class="form-label">Vehicle <span class="text-danger">*</span></label>
-                        <input type="text" id="vehicleCombo" style="width:100%;" />
-                        <div class="mt-1">
-                            <a href="@Url.Action(" AddVehicle","Vehicle")" target="_blank" class="small text-decoration-none">
-                                <i class="bi bi-plus-circle"></i> New vehicle? Add here (opens in new tab)
-                            </a>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="form-label">Insurer <span class="text-danger">*</span></label>
-                        <select id="InsurerId" class="form-select">
-                            @Html.Raw(sbInsurers.ToString())
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="form-label">Policy Class <span class="text-danger">*</span></label>
-                        <select id="PolicyClassCode" class="form-select">
-                            @Html.Raw(sbPolicyClasses.ToString())
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="form-label">Policy Number (Insurer's)</label>
-                        <input type="text" id="PolicyNumber" class="form-control"
-                               value="@Model.PolicyNumber"
-                               placeholder="Filled in once issued by insurer" />
-                    </div>
-
-                    <div>
-                        <label class="form-label">Policy Status</label>
-                        <select id="PolicyStatus" class="form-select">
-                            @Html.Raw(sbPolicyStatus.ToString())
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="form-label">Start Date <span class="text-danger">*</span></label>
-                        <input type="date" id="StartDate" class="form-control"
-                               value="@Model.StartDate.ToString(" yyyy-MM-dd")" />
-                    </div>
-
-                    <div>
-                        <label class="form-label">Expiry Date <span class="text-danger">*</span></label>
-                        <input type="date" id="ExpiryDate" class="form-control"
-                               value="@Model.ExpiryDate.ToString(" yyyy-MM-dd")" />
-                        <small class="text-muted">Auto-set to Start + 1 year - 1 day (editable)</small>
-                    </div>
-
-                    <div>
-                        <label class="form-label">NCD % <span class="text-danger">*</span></label>
-                        <select id="NcdPercentage" class="form-select">
-                            @Html.Raw(sbNcd.ToString())
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="form-label">Sum Insured (RM) <span class="text-danger">*</span></label>
-                        <input type="number" id="SumInsured" class="form-control"
-                               value="@D(Model.SumInsured)" min="0" step="0.01" />
-                        <small class="text-muted">Auto-filled from vehicle market value (editable)</small>
-                    </div>
-
-                    <div>
-                        <label class="form-label">Handling Agent</label>
-                        <select id="AgentCode" class="form-select">
-                            @Html.Raw(sbAgents.ToString())
-                        </select>
-                    </div>
-
-                    <div style="grid-column:span 2;">
-                        <label class="form-label">Remarks</label>
-                        <textarea id="Remarks" class="form-control" rows="2">@Model.Remarks</textarea>
-                    </div>
-
-                </div>
+            <div class="d-flex justify-content-between mb-1">
+                <span class="text-muted">NCD Discount</span>
+                <strong id="dispNcdDiscount">RM 0.00</strong>
             </div>
-        </div>
-
-        <!-- RIGHT COLUMN — PREMIUM CALCULATOR -->
-        <div class="ptc-card">
-            <div class="ptc-card-header">
-                <h2 class="ptc-card-title"><i class="bi bi-calculator"></i> Premium Calculator</h2>
+            <div class="d-flex justify-content-between mb-2 pb-2"
+                 style="border-bottom:1px solid var(--ims-border);">
+                <span class="text-muted">Net Premium (after NCD)</span>
+                <strong id="dispNetPremium">RM 0.00</strong>
             </div>
-            <div class="ptc-card-body">
 
-                <div class="mb-3">
-                    <label class="form-label">Gross Premium (RM) <span class="text-danger">*</span></label>
-                    <input type="number" id="GrossPremium" class="form-control calc-input"
-                           value="@D(Model.GrossPremium)" min="0" step="0.01" />
-                    <small class="text-muted">Basic tariff premium before NCD and add-ons</small>
-                </div>
+            <p class="mb-2"><strong>Add-Ons</strong></p>
 
-                <div class="d-flex justify-content-between mb-1">
-                    <span class="text-muted">NCD Discount</span>
-                    <strong id="dispNcdDiscount">RM 0.00</strong>
-                </div>
-                <div class="d-flex justify-content-between mb-2 pb-2"
-                     style="border-bottom:1px solid var(--ims-border);">
-                    <span class="text-muted">Net Premium (after NCD)</span>
-                    <strong id="dispNetPremium">RM 0.00</strong>
-                </div>
+            <div class="mb-2">
+                <label class="form-label small mb-1">Windscreen Cover (RM)</label>
+                <input type="number" id="AddonWindscreen" class="form-control form-control-sm calc-input"
+                       value="@D(Model.AddonWindscreen)" min="0" step="0.01" />
+            </div>
 
-                <p class="mb-2"><strong>Add-Ons</strong></p>
+            <div class="mb-2">
+                <label class="form-label small mb-1">Special Perils — Flood / Landslide (RM)</label>
+                <input type="number" id="AddonSpecialPerils" class="form-control form-control-sm calc-input"
+                       value="@D(Model.AddonSpecialPerils)" min="0" step="0.01" />
+            </div>
 
-                <div class="mb-2">
-                    <label class="form-label small mb-1">Windscreen Cover (RM)</label>
-                    <input type="number" id="AddonWindscreen" class="form-control form-control-sm calc-input"
-                           value="@D(Model.AddonWindscreen)" min="0" step="0.01" />
-                </div>
+            <div class="mb-2">
+                <label class="form-label small mb-1">Named Driver Extension (RM)</label>
+                <input type="number" id="AddonNamedDriver" class="form-control form-control-sm calc-input"
+                       value="@D(Model.AddonNamedDriver)" min="0" step="0.01" />
+            </div>
 
-                <div class="mb-2">
-                    <label class="form-label small mb-1">Special Perils — Flood / Landslide (RM)</label>
-                    <input type="number" id="AddonSpecialPerils" class="form-control form-control-sm calc-input"
-                           value="@D(Model.AddonSpecialPerils)" min="0" step="0.01" />
-                </div>
+            <div class="mb-2">
+                <label class="form-label small mb-1">Total Loss — SRCC (RM)</label>
+                <input type="number" id="AddonTotalLoss" class="form-control form-control-sm calc-input"
+                       value="@D(Model.AddonTotalLoss)" min="0" step="0.01" />
+            </div>
 
-                <div class="mb-2">
-                    <label class="form-label small mb-1">Named Driver Extension (RM)</label>
-                    <input type="number" id="AddonNamedDriver" class="form-control form-control-sm calc-input"
-                           value="@D(Model.AddonNamedDriver)" min="0" step="0.01" />
-                </div>
-
-                <div class="mb-2">
-                    <label class="form-label small mb-1">Total Loss — SRCC (RM)</label>
-                    <input type="number" id="AddonTotalLoss" class="form-control form-control-sm calc-input"
-                           value="@D(Model.AddonTotalLoss)" min="0" step="0.01" />
-                </div>
-
-                <div class="mb-2" id="evChargerGroup" style="opacity:@evChargerOpacity;">
-                    <label class="form-label small mb-1">
-                        <i class="bi bi-lightning-charge-fill text-success"></i>
-                        EV Charger Extension (RM)
-                        @if (!Model.IsElectricVehicle)
-                        {
+            <div class="mb-2" id="evChargerGroup" style="opacity:@evChargerOpacity;">
+                <label class="form-label small mb-1">
+                    <i class="bi bi-lightning-charge-fill text-success"></i>
+                    EV Charger Extension (RM)
+                    @if (!Model.IsElectricVehicle)
+                    {
                         <span class="text-muted">— select an EV vehicle to enable</span>
-                        }
-                    </label>
-                    <input type="number" id="AddonEvCharger" class="form-control form-control-sm calc-input"
-                           value="@D(Model.AddonEvCharger)" min="0" step="0.01"
-                           @Html.Raw(evChargerDisabled) />
-                </div>
-
-                <div class="d-flex justify-content-between mb-1 mt-3 pt-2"
-                     style="border-top:1px solid var(--ims-border);">
-                    <span class="text-muted">Total Add-Ons</span>
-                    <strong id="dispTotalAddon">RM 0.00</strong>
-                </div>
-                <div class="d-flex justify-content-between mb-1">
-                    <span class="text-muted">Service Tax (SST 8%)</span>
-                    <strong id="dispServiceTax">RM 0.00</strong>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Stamp Duty (fixed by law)</span>
-                    <strong>RM 10.00</strong>
-                </div>
-
-                <div class="d-flex justify-content-between align-items-center p-3 rounded"
-                     style="background:var(--ims-primary-light); border:1px solid var(--ims-primary);">
-                    <span style="font-weight:700; color:var(--ims-primary);">NET PREMIUM PAYABLE</span>
-                    <span id="dispNetPayable" style="font-size:22px; font-weight:800; color:var(--ims-primary);">
-                        RM 0.00
-                    </span>
-                </div>
-
-                <div class="mt-3">
-                    <label class="form-label small mb-1">Agent Commission (RM) — optional</label>
-                    <input type="number" id="AgentCommission" class="form-control form-control-sm"
-                           value="@DN(Model.AgentCommission)" min="0" step="0.01" />
-                </div>
-
+                    }
+                </label>
+                <input type="number" id="AddonEvCharger" class="form-control form-control-sm calc-input"
+                       value="@D(Model.AddonEvCharger)" min="0" step="0.01"
+                       @Html.Raw(evChargerDisabled) />
             </div>
+
+            <div class="d-flex justify-content-between mb-1 mt-3 pt-2"
+                 style="border-top:1px solid var(--ims-border);">
+                <span class="text-muted">Total Add-Ons</span>
+                <strong id="dispTotalAddon">RM 0.00</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-1">
+                <span class="text-muted">Service Tax (SST 8%)</span>
+                <strong id="dispServiceTax">RM 0.00</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">Stamp Duty (fixed by law)</span>
+                <strong>RM 10.00</strong>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center p-3 rounded"
+                 style="background:var(--ims-primary-light); border:1px solid var(--ims-primary);">
+                <span style="font-weight:700; color:var(--ims-primary);">NET PREMIUM PAYABLE</span>
+                <span id="dispNetPayable" style="font-size:22px; font-weight:800; color:var(--ims-primary);">
+                    RM 0.00
+                </span>
+            </div>
+
+            <div class="mt-3">
+                <label class="form-label small mb-1">Agent Commission (RM) — optional</label>
+                <input type="number" id="AgentCommission" class="form-control form-control-sm"
+                       value="@DN(Model.AgentCommission)" min="0" step="0.01" />
+            </div>
+
         </div>
-
     </div>
 
-    <div class="mt-3">
-        <button type="button" id="btnSavePolicy" class="btn-ptc-primary">
-            <i class="bi bi-save"></i>
-            @(isNew ? "Create Policy" : "Save Changes")
-        </button>
-    </div>
+</div>
 
-    @section Scripts {
-    <script>
-        var IS_NEW_POLICY = @Html.Raw(isNew ? "true" : "false");
-        var EDIT_CLIENT_ID = @Html.Raw(clientIdJs);
-        var EDIT_CLIENT_TEXT = @Html.Raw(clientTextJs);
-        var EDIT_VEHICLE_ID = @Html.Raw(vehicleIdJs);
-        var EDIT_VEHICLE_TEXT = @Html.Raw(vehicleTextJs);
-        var EDIT_VEHICLE_IS_EV = @Html.Raw(vehicleIsEvJs);
-        var EDIT_VEHICLE_MARKET = @Html.Raw(vehicleMarketJs);
+<div class="mt-3">
+    <button type="button" id="btnSavePolicy" class="btn-ptc-primary">
+        <i class="bi bi-save"></i>
+        @(isNew ? "Create Policy" : "Save Changes")
+    </button>
+</div>
 
-        $(document).ready(function () {
+@section Scripts {
+<script>
+    var IS_NEW_POLICY        = @Html.Raw(isNew ? "true" : "false");
+    var EDIT_CLIENT_ID       = @Html.Raw(clientIdJs);
+    var EDIT_CLIENT_TEXT     = @Html.Raw(clientTextJs);
+    var EDIT_VEHICLE_ID      = @Html.Raw(vehicleIdJs);
+    var EDIT_VEHICLE_TEXT    = @Html.Raw(vehicleTextJs);
+    var EDIT_VEHICLE_IS_EV   = @Html.Raw(vehicleIsEvJs);
+    var EDIT_VEHICLE_MARKET  = @Html.Raw(vehicleMarketJs);
 
-            var clientCombo = $("#clientCombo").kendoComboBox({
-                dataTextField: "Text",
-                dataValueField: "Id",
-                filter: "contains",
-                minLength: 1,
-                autoBind: false,
-                placeholder: "Type client name, code, or NRIC/BRN...",
-                dataSource: {
-                    serverFiltering: true,
-                    transport: {
-                        read: { url: '@Url.Action("SearchClients","Policy")', dataType: "json" }
-                    }
-                }
-            }).data("kendoComboBox");
+    $(document).ready(function () {
 
-            if (!IS_NEW_POLICY && EDIT_CLIENT_ID) {
-                clientCombo.dataSource.data([{ Id: parseInt(EDIT_CLIENT_ID), Text: EDIT_CLIENT_TEXT }]);
-                clientCombo.value(EDIT_CLIENT_ID);
-                clientCombo.text(EDIT_CLIENT_TEXT);
-            }
-
-            var vehicleCombo = $("#vehicleCombo").kendoComboBox({
-                dataTextField: "Text",
-                dataValueField: "Id",
-                filter: "contains",
-                minLength: 1,
-                autoBind: false,
-                placeholder: "Type registration number or make/model...",
-                dataSource: {
-                    serverFiltering: true,
-                    transport: {
-                        read: { url: '@Url.Action("SearchVehicles","Policy")', dataType: "json" }
-                    }
-                }
-            }).data("kendoComboBox");
-
-            if (!IS_NEW_POLICY && EDIT_VEHICLE_ID) {
-                vehicleCombo.dataSource.data([{
-                    Id: parseInt(EDIT_VEHICLE_ID),
-                    Text: EDIT_VEHICLE_TEXT,
-                    IsElectricVehicle: EDIT_VEHICLE_IS_EV,
-                    MarketValue: EDIT_VEHICLE_MARKET
-                }]);
-                vehicleCombo.value(EDIT_VEHICLE_ID);
-                vehicleCombo.text(EDIT_VEHICLE_TEXT);
-                setEvMode(EDIT_VEHICLE_IS_EV);
-            }
-
-            vehicleCombo.bind("change", function () {
-                var item = this.dataItem();
-                if (!item) { setEvMode(false); return; }
-                setEvMode(!!item.IsElectricVehicle);
-                var cur = parseFloat($('#SumInsured').val()) || 0;
-                if (cur === 0 && item.MarketValue) {
-                    $('#SumInsured').val(parseFloat(item.MarketValue).toFixed(2));
-                }
-            });
-
-            function setEvMode(isEv) {
-                if (isEv) {
-                    $('#evBanner').slideDown(150);
-                    $('#evChargerGroup').css('opacity', '1');
-                    $('#AddonEvCharger').prop('disabled', false);
-                } else {
-                    $('#evBanner').slideUp(150);
-                    $('#evChargerGroup').css('opacity', '0.5');
-                    $('#AddonEvCharger').prop('disabled', true).val('0.00');
-                    recalc();
+        var clientCombo = $("#clientCombo").kendoComboBox({
+            dataTextField  : "Text",
+            dataValueField : "Id",
+            filter         : "contains",
+            minLength      : 1,
+            autoBind       : false,
+            placeholder    : "Type client name, code, or NRIC/BRN...",
+            dataSource: {
+                serverFiltering: true,
+                transport: {
+                    read: { url: '@Url.Action("SearchClients", "Policy")', dataType: "json" }
                 }
             }
+        }).data("kendoComboBox");
 
-            var expiryUserEdited = false;
-            $('#ExpiryDate').on('change', function () { expiryUserEdited = true; });
-            $('#StartDate').on('change', function () {
-                if (expiryUserEdited) return;
-                var start = new Date($(this).val());
-                if (isNaN(start.getTime())) return;
-                var exp = new Date(start);
-                exp.setFullYear(exp.getFullYear() + 1);
-                exp.setDate(exp.getDate() - 1);
-                var yyyy = exp.getFullYear();
-                var mm = String(exp.getMonth() + 1).padStart(2, '0');
-                var dd = String(exp.getDate()).padStart(2, '0');
-                $('#ExpiryDate').val(yyyy + '-' + mm + '-' + dd);
-            });
+        if (!IS_NEW_POLICY && EDIT_CLIENT_ID) {
+            clientCombo.dataSource.data([{ Id: parseInt(EDIT_CLIENT_ID), Text: EDIT_CLIENT_TEXT }]);
+            clientCombo.value(EDIT_CLIENT_ID);
+            clientCombo.text(EDIT_CLIENT_TEXT);
+        }
 
-            function round2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
-
-            function recalc() {
-                var gross = parseFloat($('#GrossPremium').val()) || 0;
-                var ncdPct = parseFloat($('#NcdPercentage').val()) || 0;
-
-                var ncdDiscount = round2(gross * ncdPct / 100);
-                var netPremium = round2(gross - ncdDiscount);
-
-                var w = parseFloat($('#AddonWindscreen').val()) || 0;
-                var sp = parseFloat($('#AddonSpecialPerils').val()) || 0;
-                var nd = parseFloat($('#AddonNamedDriver').val()) || 0;
-                var tl = parseFloat($('#AddonTotalLoss').val()) || 0;
-                var ev = $('#AddonEvCharger').is(':disabled') ? 0 : (parseFloat($('#AddonEvCharger').val()) || 0);
-
-                var totalAddon = round2(w + sp + nd + tl + ev);
-                var serviceTax = round2((netPremium + totalAddon) * 0.08);
-                var stampDuty = 10.00;
-                var netPayable = round2(netPremium + totalAddon + serviceTax + stampDuty);
-
-                $('#dispNcdDiscount').text('RM ' + ncdDiscount.toFixed(2));
-                $('#dispNetPremium').text('RM ' + netPremium.toFixed(2));
-                $('#dispTotalAddon').text('RM ' + totalAddon.toFixed(2));
-                $('#dispServiceTax').text('RM ' + serviceTax.toFixed(2));
-                $('#dispNetPayable').text('RM ' + netPayable.toFixed(2));
+        var vehicleCombo = $("#vehicleCombo").kendoComboBox({
+            dataTextField  : "Text",
+            dataValueField : "Id",
+            filter         : "contains",
+            minLength      : 1,
+            autoBind       : false,
+            placeholder    : "Type registration number or make/model...",
+            dataSource: {
+                serverFiltering: true,
+                transport: {
+                    read: { url: '@Url.Action("SearchVehicles", "Policy")', dataType: "json" }
+                }
             }
+        }).data("kendoComboBox");
 
-            $(document).on('input change', '#GrossPremium, #NcdPercentage, .calc-input', recalc);
-            recalc();
+        if (!IS_NEW_POLICY && EDIT_VEHICLE_ID) {
+            vehicleCombo.dataSource.data([{
+                Id               : parseInt(EDIT_VEHICLE_ID),
+                Text             : EDIT_VEHICLE_TEXT,
+                IsElectricVehicle: EDIT_VEHICLE_IS_EV,
+                MarketValue      : EDIT_VEHICLE_MARKET
+            }]);
+            vehicleCombo.value(EDIT_VEHICLE_ID);
+            vehicleCombo.text(EDIT_VEHICLE_TEXT);
+            setEvMode(EDIT_VEHICLE_IS_EV);
+        }
 
-            $('#btnSavePolicy').on('click', function () {
-                var clientId = clientCombo.value();
-                var vehicleId = vehicleCombo.value();
-                var insurerId = $('#InsurerId').val();
-                var gross = parseFloat($('#GrossPremium').val()) || 0;
-
-                if (!clientId || parseInt(clientId) === 0) { KSwal.warning('Please select a client.'); return; }
-                if (!vehicleId || parseInt(vehicleId) === 0) { KSwal.warning('Please select a vehicle.'); return; }
-                if (!insurerId || insurerId === '0') { KSwal.warning('Please select an insurer.'); return; }
-                if (gross <= 0) { KSwal.warning('Please enter the Gross Premium.'); return; }
-
-                var payload = {
-                    PolicyId: $('#policyId').val(),
-                    PolicyNumber: $('#PolicyNumber').val(),
-                    ClientId: clientId,
-                    VehicleId: vehicleId,
-                    InsurerId: insurerId,
-                    PolicyClassCode: $('#PolicyClassCode').val(),
-                    PolicyStatus: $('#PolicyStatus').val(),
-                    StartDate: $('#StartDate').val(),
-                    ExpiryDate: $('#ExpiryDate').val(),
-                    NcdPercentage: $('#NcdPercentage').val(),
-                    SumInsured: $('#SumInsured').val() || 0,
-                    AgentCode: $('#AgentCode').val(),
-                    Remarks: $('#Remarks').val(),
-                    GrossPremium: gross,
-                    AddonWindscreen: $('#AddonWindscreen').val() || 0,
-                    AddonSpecialPerils: $('#AddonSpecialPerils').val() || 0,
-                    AddonNamedDriver: $('#AddonNamedDriver').val() || 0,
-                    AddonTotalLoss: $('#AddonTotalLoss').val() || 0,
-                    AddonEvCharger: $('#AddonEvCharger').is(':disabled') ? 0 : ($('#AddonEvCharger').val() || 0),
-                    AgentCommission: $('#AgentCommission').val() || null,
-                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
-                };
-
-                $.post('@Url.Action("SaveMotorPolicy","Policy")', payload)
-                    .done(function (res) {
-                        if (res.success) {
-                            KSwal.success(res.message).then(function () {
-                                window.location.href = res.redirectUrl;
-                            });
-                        } else {
-                            KSwal.error(res.message);
-                        }
-                    })
-                    .fail(function () {
-                        KSwal.error('An unexpected error occurred while saving.');
-                    });
-            });
-
+        vehicleCombo.bind("change", function () {
+            var item = this.dataItem();
+            if (!item) { setEvMode(false); return; }
+            setEvMode(!!item.IsElectricVehicle);
+            var cur = parseFloat($('#SumInsured').val()) || 0;
+            if (cur === 0 && item.MarketValue) {
+                $('#SumInsured').val(parseFloat(item.MarketValue).toFixed(2));
+            }
         });
-    </script>
-    }
+
+        function setEvMode(isEv) {
+            if (isEv) {
+                $('#evBanner').slideDown(150);
+                $('#evChargerGroup').css('opacity', '1');
+                $('#AddonEvCharger').prop('disabled', false);
+            } else {
+                $('#evBanner').slideUp(150);
+                $('#evChargerGroup').css('opacity', '0.5');
+                $('#AddonEvCharger').prop('disabled', true).val('0.00');
+                recalc();
+            }
+        }
+
+        var expiryUserEdited = false;
+        $('#ExpiryDate').on('change', function () { expiryUserEdited = true; });
+        $('#StartDate').on('change', function () {
+            if (expiryUserEdited) return;
+            var start = new Date($(this).val());
+            if (isNaN(start.getTime())) return;
+            var exp = new Date(start);
+            exp.setFullYear(exp.getFullYear() + 1);
+            exp.setDate(exp.getDate() - 1);
+            var yyyy = exp.getFullYear();
+            var mm   = String(exp.getMonth() + 1).padStart(2, '0');
+            var dd   = String(exp.getDate()).padStart(2, '0');
+            $('#ExpiryDate').val(yyyy + '-' + mm + '-' + dd);
+        });
+
+        function round2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
+
+        function recalc() {
+            var gross  = parseFloat($('#GrossPremium').val()) || 0;
+            var ncdPct = parseFloat($('#NcdPercentage').val()) || 0;
+
+            var ncdDiscount = round2(gross * ncdPct / 100);
+            var netPremium  = round2(gross - ncdDiscount);
+
+            var w  = parseFloat($('#AddonWindscreen').val())    || 0;
+            var sp = parseFloat($('#AddonSpecialPerils').val()) || 0;
+            var nd = parseFloat($('#AddonNamedDriver').val())   || 0;
+            var tl = parseFloat($('#AddonTotalLoss').val())     || 0;
+            var ev = $('#AddonEvCharger').is(':disabled')
+                ? 0
+                : (parseFloat($('#AddonEvCharger').val()) || 0);
+
+            var totalAddon  = round2(w + sp + nd + tl + ev);
+            var serviceTax  = round2((netPremium + totalAddon) * 0.08);
+            var stampDuty   = 10.00;
+            var netPayable  = round2(netPremium + totalAddon + serviceTax + stampDuty);
+
+            $('#dispNcdDiscount').text('RM ' + ncdDiscount.toFixed(2));
+            $('#dispNetPremium').text('RM '  + netPremium.toFixed(2));
+            $('#dispTotalAddon').text('RM '  + totalAddon.toFixed(2));
+            $('#dispServiceTax').text('RM '  + serviceTax.toFixed(2));
+            $('#dispNetPayable').text('RM '  + netPayable.toFixed(2));
+        }
+
+        $(document).on('input change', '#GrossPremium, #NcdPercentage, .calc-input', recalc);
+        recalc();
+
+        $('#btnSavePolicy').on('click', function () {
+            var clientId  = clientCombo.value();
+            var vehicleId = vehicleCombo.value();
+            var insurerId = $('#InsurerId').val();
+            var gross     = parseFloat($('#GrossPremium').val()) || 0;
+
+            if (!clientId  || parseInt(clientId)  === 0) { KSwal.warning('Please select a client.');   return; }
+            if (!vehicleId || parseInt(vehicleId) === 0) { KSwal.warning('Please select a vehicle.');  return; }
+            if (!insurerId || insurerId === '0')         { KSwal.warning('Please select an insurer.'); return; }
+            if (gross <= 0)                              { KSwal.warning('Please enter the Gross Premium.'); return; }
+
+            var payload = {
+                PolicyId        : $('#policyId').val(),
+                PolicyNumber    : $('#PolicyNumber').val(),
+                ClientId        : clientId,
+                VehicleId       : vehicleId,
+                InsurerId       : insurerId,
+                PolicyClassCode : $('#PolicyClassCode').val(),
+                PolicyStatus    : $('#PolicyStatus').val(),
+                StartDate       : $('#StartDate').val(),
+                ExpiryDate      : $('#ExpiryDate').val(),
+                NcdPercentage   : $('#NcdPercentage').val(),
+                SumInsured      : $('#SumInsured').val() || 0,
+                AgentCode       : $('#AgentCode').val(),
+                Remarks         : $('#Remarks').val(),
+                GrossPremium    : gross,
+                AddonWindscreen : $('#AddonWindscreen').val()    || 0,
+                AddonSpecialPerils: $('#AddonSpecialPerils').val() || 0,
+                AddonNamedDriver: $('#AddonNamedDriver').val()   || 0,
+                AddonTotalLoss  : $('#AddonTotalLoss').val()     || 0,
+                AddonEvCharger  : $('#AddonEvCharger').is(':disabled') ? 0 : ($('#AddonEvCharger').val() || 0),
+                AgentCommission : $('#AgentCommission').val()    || null,
+                __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+            };
+
+            $.post('@Url.Action("SaveMotorPolicy", "Policy")', payload)
+                .done(function (res) {
+                    if (res.success) {
+                        KSwal.success(res.message).then(function () {
+                            window.location.href = res.redirectUrl;
+                        });
+                    } else {
+                        KSwal.error(res.message);
+                    }
+                })
+                .fail(function () {
+                    KSwal.error('An unexpected error occurred while saving.');
+                });
+        });
+
+    });
+</script>
+}

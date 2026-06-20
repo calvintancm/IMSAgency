@@ -966,4 +966,145 @@ body.sidebar-collapsed #main-wrapper {
     #footerClock, .footer-hide-mobile {
         display: none;
     }
+
+
+    /* ===================== RENEWAL CLONE BANNER ===================== */
+    .alert-info {
+        background: var(--ims-primary-light);
+        border: 1px solid var(--ims-primary);
+        color: var(--ims-primary-dark);
+        border-radius: 8px;
+    }
+
+    /* ===================== TABLE IMPROVEMENTS ===================== */
+    .table > :not(caption) > * > * {
+        padding: 10px 12px;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: var(--ims-primary-light);
+    }
+
+    /* ===================== MODAL POLISH ===================== */
+    .modal-header {
+        background: var(--ims-primary-light);
+        border-bottom: 1px solid var(--ims-border);
+    }
+
+    .modal-title {
+        color: var(--ims-primary);
+        font-weight: 700;
+    }
+
+    .modal-footer {
+        border-top: 1px solid var(--ims-border);
+    }
+
+    /* ===================== KENDO GRID POLISH ===================== */
+    .k-grid {
+        border: none !important;
+        font-family: 'Segoe UI', system-ui, sans-serif !important;
+        font-size: 13.5px !important;
+    }
+
+        .k-grid th {
+            background: #f8fafc !important;
+            color: #374151 !important;
+            font-weight: 600 !important;
+            font-size: 12.5px !important;
+            border-color: var(--ims-border) !important;
+        }
+
+        .k-grid td {
+            border-color: var(--ims-border) !important;
+            vertical-align: middle !important;
+        }
+
+        .k-grid tr:hover td {
+            background: var(--ims-primary-light) !important;
+        }
+
+        .k-grid .k-alt td {
+            background: #fafbfc !important;
+        }
+
+    .k-pager-wrap {
+        background: #f8fafc !important;
+        border-top: 1px solid var(--ims-border) !important;
+        padding: 8px 12px !important;
+    }
+
+    .k-button.k-primary,
+    .k-grid-update {
+        background: var(--ims-primary) !important;
+        border-color: var(--ims-primary) !important;
+        color: #fff !important;
+    }
+
+    .k-grid-cancel {
+        background: #f1f5f9 !important;
+        border-color: #e2e8f0 !important;
+        color: #374151 !important;
+    }
+
+    /* ===================== FORM LABEL CONSISTENCY ===================== */
+    .form-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 5px;
+    }
+
+    .form-control, .form-select {
+        font-size: 14px;
+        border-radius: 7px;
+        border-color: #e2e8f0;
+    }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--ims-primary);
+            box-shadow: 0 0 0 3px rgba(13, 111, 164, 0.12);
+        }
+
+    /* ===================== BADGE ADDITIONAL ===================== */
+    .badge-warning {
+        background: var(--ims-warning-light);
+        color: var(--ims-warning);
+    }
+
+    .badge-lapsed {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    /* ===================== PAGE TRANSITIONS ===================== */
+    .app-content {
+        animation: fadeIn 0.15s ease;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(4px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* ===================== RESPONSIVE GRID CARDS ===================== */
+    @media (max-width: 1200px) {
+        .app-content {
+            padding: 16px 20px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
 }
